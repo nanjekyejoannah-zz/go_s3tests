@@ -88,6 +88,14 @@ func Getcfg() *Config {
 	return cfg
 }
 
+func WithIfNoneMatch(conditions ...string) request.Option {
+    return func(r *request.Request) {
+       for _, v := range conditions {
+            r.HTTPRequest.Header.Add("If-None-Match", v)
+       }
+    }
+}
+
 sess, err := session.NewSession()
 if err != nil {
 	fmt.Fprintf(os.Stderr, "bad session=%v\n", err)
@@ -108,22 +116,25 @@ func CreateBucket(bucket string){
 	}
 }
 
-func DeleteBucket(bucket){
+func DeleteBucket(bucket) error{
 
 	params := &s3.DeleteBucketInput{
 		Bucket: aws.String(bucket),
 	}
 
 	_, err := svc.DeleteBucket(params)
-	if err != nil {
-	    log.Println("Bucket delete failed", err)
-	    return
-	}
+
+	// chini ya mazi wait till bucket is deleted.
+	err = svc.WaitUntilBucketNotExists(&s3.HeadBucketInput{
+		Bucket: aws.String(bucket),
+	})
+
+	return err
 }
 
 
 
-func WriteObject(bucket string, key string, content string){
+func SetStringObject(bucket string, key string, content string) (*PutObject, error){
 
 	_, err := svc.PutObject(&s3.PutObjectInput{
 	    Body:   strings.NewReader(content),
@@ -134,9 +145,21 @@ func WriteObject(bucket string, key string, content string){
 	    log.Printf("Failed to write data", bucket, key, err)
 	    return
 	}
+
+	return err
 }
 
-func ReadObject(bucket string, key string) string {
+func SetStringObjectWithNoIfNoneMatch(bucket string, key string, content string) error {
+
+	_, err := svc.PutObjectwithContext(ctx, &s3.PutObjectInput{
+	    Bucket: aws.String(bucket),
+	    Key:      aws.String(key),
+	}, WithIfNoneMatch("etag")
+
+	return err
+}
+
+func GetStringObject(bucket string, key string) string {
 
 	req, err := svc.GetObject(&s3.GetObjectInput{
 	    Bucket: aws.String(bucket),
@@ -153,7 +176,7 @@ func ReadObject(bucket string, key string) string {
 	return content
 }
 
-func DeleteObject(bucket string, key string){
+func DeleteStringObject(bucket string, key string) error {
 
 	params := &s3.DeleteObjectInput{
         Bucket: aws.String(bucket),
@@ -164,4 +187,51 @@ func DeleteObject(bucket string, key string){
 	    log.Printf("Failed to delete %s/%s, %s\n", bucket, key)
 	    return
 	}
+
+	return err
+}
+
+func ListStringObjects(bucket string) []string {
+
+	result, err := svc.ListObjects(&s3.ListObjectsInput{Bucket: aws.String(bucket)})
+	if err != nil {
+		exitErrorf("Unable to list items in bucket %q, %v", bucket, err)
+	}
+
+	for _, item in result.Contents{
+		contents := item
+	}
+
+	return contents
+}
+
+func ListStringObjects(bucket string, Delimiter string) *svc.ListObjects {
+	list, err := svc.ListObjects(&s3.ListObjectsInput{
+	        Bucket:    aws.String("example-bucket"),
+	        Delimiter: aws.String("/"),
+	    })
+}
+
+func DeleteStringObjects(bucket string) error {
+	resp, err := svc.ListObjects(&s3.ListObjectsInput{Bucket: aws.String(bucket)})
+
+	if err != nil {
+		exitErrorf("Unable to list items in bucket %q, %v", bucket, err)
+	}
+
+	num_objs := len(resp.Contents)
+	var items s3.Delete
+	var objs = make([]*s3.ObjectIdentifier, num_objs)
+
+	for i, o := range resp.Contents {
+		objs[i] = &s3.ObjectIdentifier{Key: aws.String(*o.Key)}
+	}
+	items.SetObjects(objs)
+	_, err = svc.DeleteObjects(&s3.DeleteObjectsInput{Bucket: &bucket, Delete: &items})
+
+	if err != nil {
+		exitErrorf("Unable to delete objects from bucket %q, %v", bucket, err)
+	}
+
+	return err	
 }
