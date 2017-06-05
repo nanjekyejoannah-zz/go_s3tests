@@ -69,9 +69,29 @@ func parse_opts() {
 }
 
 
-func Getcfg() *Config {
+func Getcfg() *aws.Config {
 	Connect()
 	token := ""
+	creds := credentials.NewStaticCredentials(aws_access_key_id, aws_secret_access_key, token)
+	_, err := creds.Get()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "bad credentials: %s\n", err)
+		return
+	}
+	cfg := aws.NewConfig().WithRegion(my_region).
+		WithEndpoint(my_endpoint).
+		WithDisableSSL(true).
+		WithLogLevel(3).
+		WithS3ForcePathStyle(true).
+		WithCredentials(creds)
+
+	return cfg
+}
+
+func GetDumycfg() *aws.Config {
+	Connect()
+	token := ""
+	aws_secret_access_key := "sddgfhyfkiuloi;popo"
 	creds := credentials.NewStaticCredentials(aws_access_key_id, aws_secret_access_key, token)
 	_, err := creds.Get()
 	if err != nil {
@@ -102,18 +122,17 @@ if err != nil {
 	return
 }
 
-svc := s3.New(sess, utils.Getcfg())
+svc := s3.New(sess, Getcfg())
+uploader := s3manager.NewUploader(sess)
+svclient := s3.New(sess, GetDumycfg())
 
-func CreateBucket(bucket string){
+func CreateBucket(bucket string) (error) {
 
 	_, err := svc.CreateBucket(&s3.CreateBucketInput{
     	Bucket: &bucket,
 	})
 
-	if err != nil {
-	    log.Println("Bucket creation failed", err)
-	    return
-	}
+	return err
 }
 
 func DeleteBucket(bucket) error{
@@ -134,7 +153,7 @@ func DeleteBucket(bucket) error{
 
 
 
-func SetStringObject(bucket string, key string, content string) (*PutObject, error){
+func SetStringObject(bucket string, key string, content string) (error){
 
 	_, err := svc.PutObject(&s3.PutObjectInput{
 	    Body:   strings.NewReader(content),
@@ -159,7 +178,7 @@ func SetStringObjectWithNoIfNoneMatch(bucket string, key string, content string)
 	return err
 }
 
-func GetStringObject(bucket string, key string) string {
+func GetStringObject(bucket string, key string) (string)) {
 
 	req, err := svc.GetObject(&s3.GetObjectInput{
 	    Bucket: aws.String(bucket),
@@ -205,11 +224,27 @@ func ListStringObjects(bucket string) []string {
 	return contents
 }
 
-func ListStringObjects(bucket string, Delimiter string) *svc.ListObjects {
-	list, err := svc.ListObjects(&s3.ListObjectsInput{
-	        Bucket:    aws.String("example-bucket"),
-	        Delimiter: aws.String("/"),
-	    })
+func ListkeyswithDelimeter(bucket string, delimiter string) ([]string, []string) {
+
+	params := &s3.ListObjectsInput{
+		Bucket:  aws.String(bucket),
+		MaxKeys: aws.Int64(10),
+		Delimiter: aws.String(delimiter),
+	}
+
+	resp, err := svc.ListObjects(params})
+	var keys []string
+	var keys []string
+
+	for _, value := range resp.Contents {
+		for i := 0; i < len(value); i++ {
+	        keys = Extend(*value.Key, i)
+	        prefixes = Extend(*value.Prefix, i)
+	    }
+	}
+
+	return  keys, prefixes
+
 }
 
 func DeleteStringObjects(bucket string) error {
@@ -234,4 +269,44 @@ func DeleteStringObjects(bucket string) error {
 	}
 
 	return err	
+}
+
+func UploadFile(bucket string, file_to_upload string) (error, *s3.PutObjectInput) {
+
+	file, err := os.Open(file_to_upload) 
+	if err != nil { 
+	    exitErrorf("err opening file: %s", err) 
+	} 
+	defer file.Close() 
+	fileInfo, _ := file.Stat() 
+	size := fileInfo.Size() 
+	buffer := make([]byte, size) // read file content to buffer 
+	file.Read(buffer) 
+	fileBytes := bytes.NewReader(buffer) 
+	fileType := http.DetectContentType(buffer) 
+	path := "/home/joan" + file.Name() 
+
+	params := &s3manager.UploadInput{ 
+		Bucket: aws.String(bucket), 
+		Key: aws.String(path), 
+		ACL: aws.String("public-read"),
+	    Body: fileBytes, 
+	    ContentLength: aws.Int64(size), 
+	    ContentType: aws.String(fileType), 
+	} 
+
+	resp, err := uploader.Upload(params) 
+	return resp, err
+}
+
+func Postwithwrongkey(bucket string, key string) (*s3.PutObjectInput, error) {
+
+	svc = svclient
+	req, err := svc.PutObjectRequest(&s3.PutObjectInput{
+		Bucket: aws.String("testBucket"),
+		Key: aws.String("testKey"),
+		ACL: aws.String("private"),
+	})
+
+	return req, err
 }
