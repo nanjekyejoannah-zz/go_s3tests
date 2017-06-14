@@ -5,13 +5,16 @@ import (
 	"github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/s3"
+	"github.com/aws/aws-sdk-go/service/s3/s3manager"
 
 	"bytes"
 	"fmt"
 	yaml "gopkg.in/yaml.v2"
 	"io"
 	"io/ioutil"
+	"os"
 	"strings"
+	"time"
 )
 
 type Configuration struct {
@@ -40,11 +43,12 @@ func LoadConfig(path string) Configuration {
 	return config
 }
 
-var config = LoadConfig("../config.yaml")
-var creds = credentials.NewStaticCredentials(config.rgw_access_key_id, config.rgw_secret_access_key , "")
+var config = LoadConfig("config.yaml")
 
-var cfg = aws.NewConfig().WithRegion(config.my_region).
-	WithEndpoint(config.my_end_point).
+var creds = credentials.NewStaticCredentials("0555b35654ad1656d804", "h7GhxuBLTrlhVUyxSPUKUV8r/2EI4ngqJxD7iBdBYLhwluN30JaT3Q==", "")
+
+var cfg = aws.NewConfig().WithRegion("mexico").
+	WithEndpoint("http://localhost:8000/").
 	WithDisableSSL(true).
 	WithLogLevel(3).
 	WithS3ForcePathStyle(true).
@@ -250,26 +254,11 @@ func SinglFileUpload(bucket string, filename string) error {
 	file, _ := os.Open(filename)
 	defer file.Close()
 
-	_, err = uploader.Upload(&s3manager.UploadInput{
+	_, err := uploader.Upload(&s3manager.UploadInput{
 		Bucket: aws.String(bucket),
 		Key:    aws.String(filename),
 		Body:   file,
 	})
-
-	return err
-}
-
-func SinglFileDownLoad(bucket string, item string) error {
-
-	file, err := os.Create(item)
-
-	defer file.Close()
-
-	numBytes, err := downloader.Download(file,
-		&s3.GetObjectInput{
-			Bucket: aws.String(bucket),
-			Key:    aws.String(item),
-		})
 
 	return err
 }

@@ -15,7 +15,7 @@ func TestBucketCreateReadDelete(t *testing.T) {
 	//should be able to create, delete and list buckets.
 
 	assert := assert.New(t)
-	bucket := "bucket7"
+	bucket := "bucket1"
 
 	err := CreateBucket(bucket)
 	assert.Nil(err)
@@ -77,37 +77,6 @@ func TestBucketDeleteNotEmpty(t *testing.T) {
 	err = DeleteBucket(bucket)
 	assert.Nil(err)
 
-}
-
-func TestBucketCreateExists(t *testing.T) {
-
-	// should not create two buckets with the same name.
-
-	assert := assert.New(t)
-	bucket := "bucket8"
-
-	err := CreateBucket(bucket)
-	assert.Nil(err)
-
-	err = CreateBucket(bucket)
-	assert.Nil(err)
-
-	bkts, err := ListBuckets()
-	assert.Nil(err)
-	assert.Equal(1, len(bkts))
-
-	if err != nil {
-		if awsErr, ok := err.(awserr.Error); ok {
-
-			assert.Equal(awsErr.Code(), "BucketAlreadyExists")
-			assert.Equal(awsErr.Message(), "Not Found")
-			//assert.Equal(awsErr.Error(), 409)
-
-		}
-	}
-
-	err = DeleteBucket(bucket)
-	assert.Nil(err)
 }
 
 func TestBucketListEmpty(t *testing.T) {
@@ -252,8 +221,8 @@ func TestObjectWriteReadUpdateReadDelete(t *testing.T) {
 
 	// Reading content that was never written should fail
 	assert := assert.New(t)
-	bucket := "bucket5"
-	key := "key5"
+	bucket := "bucket1"
+	key := "key1"
 
 	err := CreateBucket(bucket)
 	assert.Nil(err)
@@ -274,7 +243,7 @@ func TestObjectWriteReadUpdateReadDelete(t *testing.T) {
 	result, _ = GetObject(bucket, key)
 	assert.Equal(result, "Come on !!")
 
-	err = DeleteObject(bucket, key)
+	err = DeleteObjects(bucket)
 	assert.Nil(err)
 
 	// If object was well deleted, there shouldn't be an error at this point
@@ -282,7 +251,7 @@ func TestObjectWriteReadUpdateReadDelete(t *testing.T) {
 	assert.Nil(err)
 }
 
-func TestObjectDeleteMany(t *testing.T) {
+func TestObjectDeleteAll(t *testing.T) {
 
 	// Reading content that was never written should fail
 	assert := assert.New(t)
@@ -298,12 +267,14 @@ func TestObjectDeleteMany(t *testing.T) {
 	err = PutObjectToBucket(bucket, key, "hello")
 	err = PutObjectToBucket(bucket, key1, "foo")
 	assert.Nil(err)
+	objects, err := ListObjects(bucket)
+	assert.Nil(err)
 	assert.Equal(2, len(objects))
 
 	err = DeleteObjects(bucket)
 	assert.Nil(err)
 
-	objects, err := ListObjects(bucket)
+	objects, err = ListObjects(bucket)
 	assert.Nil(err)
 	assert.Equal(empty_list, objects)
 
@@ -351,7 +322,6 @@ func TestObjectCopyBucketNotFound(t *testing.T) {
 
 func TestObjectCopyKeyNotFound(t *testing.T) {
 
-
 	assert := assert.New(t)
 	bucket := "bucket4"
 	item := "key1"
@@ -376,69 +346,11 @@ func TestObjectCopyKeyNotFound(t *testing.T) {
 	}
 
 	err = DeleteObjects(bucket)
+	err = DeleteObjects(other)
 	assert.Nil(err)
 
 	err = DeleteBucket(bucket)
-	assert.Nil(err)
-
-}
-
-func TestObjectCopyToDiffBucket(t *testing.T) {
-
-
-	assert := assert.New(t)
-	bucket := "bucket4"
-	item := "key1"
-	other := "bucket2"
-
-	source := bucket + "/" + item
-
-	err := CreateBucket(bucket)
-	err = CreateBucket(source)
-	assert.Nil(err)
-
-	// Write object
-	err = PutObjectToBucket(source, item, "hello")
-	assert.Nil(err)
-
-	err = CopyObject(other, source, item)
-	assert.NotNil(err)
-
-	if err != nil {
-		if awsErr, ok := err.(awserr.Error); ok {
-
-			assert.Equal(awsErr.Code(), "NoSuchBucket")
-			assert.Equal(awsErr.Message(), "")
-		}
-
-	}
-
-	err = DeleteObjects(bucket)
-	err = DeleteObjects(source)
-	assert.Nil(err)
-
-	err = DeleteBucket(bucket)
-	err = DeleteBucket(source)
-	assert.Nil(err)
-
-}
-
-func TestSingleFileUploadAndDownload(t *testing.T) {
-
-	assert := assert.New(t)
-	bucket := "bucketz"
-	filename := "sample_file.txt"
-
-	err := SinglFileUpload(bucket, filename)
-	assert.Nil(err)
-
-	err = SinglFileDownLoad(bucket, filename)
-	assert.Nil(err)
-
-	err = DeleteObjects(bucket)
-	assert.Nil(err)
-
-	err = DeleteBucket(bucket)
+	err = DeleteBucket(other)
 	assert.Nil(err)
 
 }

@@ -1,4 +1,4 @@
-package urls
+package s3tests
 
 import (
 	assert "github.com/stretchr/testify/require"
