@@ -26,3 +26,4 @@ func TestGeneratePresignedUrlGetObject(t *testing.T) {
 	err = DeleteBucket(bucket)
 	assert.Nil(err)
 }
+

@@ -274,3 +274,4 @@ func GeneratePresignedUrlGetObject(bucket string, key string) (string, error) {
 
 	return urlStr, err
 }
+
