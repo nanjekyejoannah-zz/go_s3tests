@@ -1,16 +1,15 @@
-
 appname: go_s3test
 
-RGW:
-    key:     	0555b35654ad1656d804
+  RGW:
+    key:        0555b35654ad1656d804
     secret:     h7GhxuBLTrlhVUyxSPUKUV8r/2EI4ngqJxD7iBdBYLhwluN30JaT3Q==
-    bucket: 	bucket1
+    bucket:     bucket1
     region:     mexico
-    endpoint:	http://localhost:8000/
+    endpoint:   http://localhost:8000/
 
-default:
-	key:     	0555b35654ad1656d804
+  default:
+    key:        0555b35654ad1656d804
     secret:     h7GhxuBLTrlhVUyxSPUKUV8r/2EI4ngqJxD7iBdBYLhwluN30JaT3Q==
-    bucket: 	bucket1
+    bucket:     bucket1
     region:     mexico
-    endpoint:	http://localhost:8000/
+    endpoint:   http://localhost:8000/
