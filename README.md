@@ -67,5 +67,9 @@ You need to set your GoPath
 
 ### Technical debt
 
-+ I need to ensure credentials are got from config.yaml. Currently I have a work around in development specifying the whole path but this is not clean. I need to find a way of loading relative path for the config.
++ I need to ensure credentials are got from config.yaml. Currently I have a work around in development specifying the whole path but this is not clean. I need to find a way of loading a relative path for the config file.
+
+### To do
+
+Write mote tests.
 
