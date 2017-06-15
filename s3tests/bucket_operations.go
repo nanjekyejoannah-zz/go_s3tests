@@ -9,46 +9,32 @@ import (
 
 	"bytes"
 	"fmt"
-	yaml "gopkg.in/yaml.v2"
+	"github.com/spf13/viper"
 	"io"
-	"io/ioutil"
 	"os"
 	"strings"
 	"time"
 )
 
-type Configuration struct {
-	RGW          rgwConfig
-	JwtKey       string `yaml:"default_key"`
-	IgnoreString string `yaml:"-"`
+func LoadConfig() error {
+
+	viper.SetConfigName("app")  
+  	viper.AddConfigPath("../config")
+
+  	err := viper.ReadInConfig() 
+  	if err != nil {
+    	fmt.Println("Config file not found...")
+  	}
+
+  	return err
 }
 
-type rgwConfig struct {
-	rgw_access_key_id     string `yaml:"key"`
-	rgw_secret_access_key string `yaml:"secret"`
-	bucket                string `yaml:"bucket"`
-	my_end_point          string `yaml:"endpoint"`
-	my_region             string `yaml:"region"`
-}
+var err = LoadConfig()
 
-func LoadConfig(path string) Configuration {
-	file, err := ioutil.ReadFile(path)
-	var config Configuration
+var creds = credentials.NewStaticCredentials("s3main.access_key", "s3main.access_key", "")
 
-	err = yaml.Unmarshal(file, &config)
-	if err != nil {
-		fmt.Printf("Config Parse Error: ")
-	}
-
-	return config
-}
-
-var config = LoadConfig("config.yaml")
-
-var creds = credentials.NewStaticCredentials("0555b35654ad1656d804", "h7GhxuBLTrlhVUyxSPUKUV8r/2EI4ngqJxD7iBdBYLhwluN30JaT3Q==", "")
-
-var cfg = aws.NewConfig().WithRegion("mexico").
-	WithEndpoint("http://localhost:8000/").
+var cfg = aws.NewConfig().WithRegion(viper.GetString("s3main.region")).
+	WithEndpoint("s3main.endpoint").
 	WithDisableSSL(true).
 	WithLogLevel(3).
 	WithS3ForcePathStyle(true).

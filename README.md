@@ -1,6 +1,5 @@
-=======================
- S3 compatibility tests
-========================
+
+ ## S3 compatibility tests
 
 This is a set of completely unofficial Amazon AWS S3 compatibility
 tests, that will hopefully be useful to people implementing software
@@ -30,33 +29,46 @@ Clone the repository
 	git clone https://github.com/nanjekyejoannah/go_s3tests
 	cd go_s3tests
 
-You will need to create a configuration file with the location of the service and credentials. You can edit the config.yaml.sample file available in the project. Make sure to save it as config.yaml. The tests connect to the Ceph RGW ,therefore you shoud have started your RGW and use the credentials given on start. It looks like this:
+You will need to create a configuration file with the location of the service and credentials. You can edit the config/app.toml.sample file available in the project. Make sure to save it as app.toml. You can also decide to make the config file a yaml or json. Just give it app.yaml or app.json for yaml and json respectively. The tests connect to the Ceph RGW ,therefore you shoud have started your RGW and use the credentials you get. The config file looks like this:
 
+	[DEFAULT]
 
-	appname: go_s3test
+	host = "s3.amazonaws.com"
+	port = "8080"
+	is_secure = "yes"
 
-	RGW:
-	    key:     	0555b35654ad1656d804
-	    secret:     h7GhxuBLTrlhVUyxSPUKUV8r/2EI4ngqJxD7iBdBYLhwluN30JaT3Q==
-	    bucket: 	bucket1
-	    region:     mexico
-	    endpoint:	http://localhost:8000/
+	[fixtures]
 
-	default:
-		key:     	0555b35654ad1656d804
-	    secret:     h7GhxuBLTrlhVUyxSPUKUV8r/2EI4ngqJxD7iBdBYLhwluN30JaT3Q==
-	    bucket: 	bucket1
-	    region:     mexico
-    	endpoint:	http://localhost:8000/
+	bucket_prefix = "jnans"
 
-You need to set your GoPath
+	[s3main]
+
+	access_key = "0555b35654ad1656d804"
+	access_secret = "h7GhxuBLTrlhVUyxSPUKUV8r/2EI4ngqJxD7iBdBYLhwluN30JaT3Q=="
+	bucket = "bucket1"
+	region = "mexico"
+	endpoint = "http://localhost:8000/"
+	display_name = ""
+	email = "someone@gmail.com"
+
+	[s3alt]
+
+	access_key = "0555b35654ad1656d804"
+	access_secret = "h7GhxuBLTrlhVUyxSPUKUV8r/2EI4ngqJxD7iBdBYLhwluN30JaT3Q=="
+	bucket = "bucket1"
+	region = "mexico"
+	endpoint = "http://localhost:8000/"
+	display_name = ""
+	email = "someone@gmail.com"
+
+You need to set your GoPath .Details on setting up Ho environments can be found [here](https://golang.org/doc/install)
 	
 	export GOPATH=$HOME/go
 
 ### Installing dependencies
 
 	go get -u github.com/aws/aws-sdk-go
-	go get gopkg.in/yaml.v2
+	go get github.com/spf13/viper
 	go get github.com/stretchr/testify/require
 
 ### To run the tests
@@ -64,13 +76,3 @@ You need to set your GoPath
 	cd s3tests
 	go test        			 # to run all tests
 	go test <filename>       # to run specific test file
-
-### Technical debt
-
-+ I need to ensure credentials are got from config.yaml. Currently I have a work around in development specifying the whole path but this is not clean. I need to find a way of loading a relative path for the config file.
-
-### To do
-
-Write mote tests.
-
-
