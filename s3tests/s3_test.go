@@ -357,7 +357,159 @@ func TestObjectCopyKeyNotFound(t *testing.T) {
 
 //.....................................Test Getting Ranged Objects....................................................................................................................
 
-func TestRangedRequestResponseCode(t *testing.T) {
+func TestRangedRequest(t *testing.T) {
 
-	//assert := assert.New(t)
+	//getting objects in a range should return correct data
+
+	assert := assert.New(t)
+	bucket := "bucket1"
+	key := "key"
+	content := "testcontent"
+
+	var data string
+	var resp *s3.GetObjectOutput
+
+
+	err := CreateBucket(bucket)
+	err = PutObjectToBucket(bucket, key, content)
+
+	resp, data, err = GetObjectWithRange(bucket, key, "bytes=4-7")
+	assert.Nil(err)
+	assert.Equal(data, content[4:8])
+	assert.Equal(*resp.AcceptRanges, "bytes")
+
+	err = DeleteObjects(bucket)
+	err = DeleteBucket(bucket)
 }
+
+func TestRangedRequestSkipLeadingBytes(t *testing.T) {
+
+	//getting objects in a range should return correct data
+
+	assert := assert.New(t)
+	bucket := "bucket1"
+	key := "key"
+	content := "testcontent"
+
+	var data string
+	var resp *s3.GetObjectOutput
+
+
+	err := CreateBucket(bucket)
+	err = PutObjectToBucket(bucket, key, content)
+
+	resp, data, err = GetObjectWithRange(bucket, key, "bytes=4-")
+	assert.Nil(err)
+	assert.Equal(data, content[4:])
+	assert.Equal(*resp.AcceptRanges, "bytes")
+
+	err = DeleteObjects(bucket)
+	err = DeleteBucket(bucket)
+}
+
+func TestRangedRequestReturnTrailingBytes(t *testing.T) {
+
+	//getting objects in a range should return correct data
+
+	assert := assert.New(t)
+	bucket := "bucket1"
+	key := "key"
+	content := "testcontent"
+
+	var data string
+	var resp *s3.GetObjectOutput
+
+
+	err := CreateBucket(bucket)
+	err = PutObjectToBucket(bucket, key, content)
+
+	resp, data, err = GetObjectWithRange(bucket, key, "bytes=-8")
+	assert.Nil(err)
+	assert.Equal(data, content[3:11])
+	assert.Equal(*resp.AcceptRanges, "bytes")
+
+	err = DeleteObjects(bucket)
+	err = DeleteBucket(bucket)
+}
+
+func TestRangedRequestInvalidRange(t *testing.T) {
+
+	//getting objects in unaccepted range returns invalid range
+
+	assert := assert.New(t)
+	bucket := "bucket1"
+	key := "key"
+	content := "testcontent"
+
+	err := CreateBucket(bucket)
+	err = PutObjectToBucket(bucket, key, content)
+
+	_, _, err = GetObjectWithRange(bucket, key, "bytes=40-50")
+	assert.NotNil(err)
+
+	if err != nil {
+		if awsErr, ok := err.(awserr.Error); ok {
+
+			assert.Equal(awsErr.Code(), "InvalidRange")
+			assert.Equal(awsErr.Message(), "")
+
+		}
+	}
+
+	err = DeleteObjects(bucket)
+	err = DeleteBucket(bucket)
+}
+
+func TestRangedRequestEmptyObject(t *testing.T) {
+
+	//getting a range of an empty object returns invalid range
+
+	assert := assert.New(t)
+	bucket := "bucket1"
+	key := "key"
+	content := ""
+
+	err := CreateBucket(bucket)
+	err = PutObjectToBucket(bucket, key, content)
+
+	_, _, err = GetObjectWithRange(bucket, key, "bytes=40-50")
+	assert.NotNil(err)
+
+	if err != nil {
+		if awsErr, ok := err.(awserr.Error); ok {
+
+			assert.Equal(awsErr.Code(), "InvalidRange")
+			assert.Equal(awsErr.Message(), "")
+
+		}
+	}
+
+	err = DeleteObjects(bucket)
+	err = DeleteBucket(bucket)
+}
+
+//...........................Tests for Presign Url...........................................................................
+
+func TestGeneratePresignedUrlGetObject(t *testing.T) {
+
+	assert := assert.New(t)
+	bucket := "bucket1"
+	key := "key1"
+	url := ""
+
+	err := CreateBucket(bucket)
+	assert.Nil(err)
+
+	err = PutObjectToBucket(bucket, key, "hello")
+	assert.Nil(err)
+
+	url, err = GeneratePresignedUrlGetObject(bucket, key)
+	assert.Nil(err)
+	assert.NotEqual("", url)
+
+	err = DeleteObjects(bucket)
+	err = DeleteBucket(bucket)
+	assert.Nil(err)
+}
+
+

@@ -18,8 +18,8 @@ import (
 
 func LoadConfig() error {
 
-	viper.SetConfigName("app")  
-  	viper.AddConfigPath("../config")
+	viper.SetConfigName("config")  
+  	viper.AddConfigPath("../")
 
   	err := viper.ReadInConfig() 
   	if err != nil {
@@ -147,6 +147,34 @@ func GetObject(bucket string, key string) (string, error) {
 	return resp, errr
 }
 
+func GetObjectWithRange(bucket string, key string, range_value string) (*s3.GetObjectOutput, string, error) {
+
+	results, err := svc.GetObject(&s3.GetObjectInput{Bucket: aws.String(bucket), 
+					Key: aws.String(key), Range: aws.String(range_value) })
+
+	var data string
+	var errr error
+	var resp *s3.GetObjectOutput
+
+	if err == nil {
+
+		buf := bytes.NewBuffer(nil)
+		if _, err := io.Copy(buf, results.Body); err != nil {
+			return results, "", err
+		}
+
+		byteArray := buf.Bytes()
+
+		resp, data, errr = results, string(byteArray[:]), err
+
+	} else {
+
+		resp, data, errr = results, "", err
+	}
+
+	return resp, data, errr
+}
+
 func DeleteObject(bucket string, key string) error {
 
 	_, err := svc.DeleteObject(&s3.DeleteObjectInput{
@@ -231,7 +259,7 @@ func CopyObject(other string, source string, item string) error {
 	return err
 }
 
-func SinglFileUpload(bucket string, filename string) error {
+func SingleFileUpload(bucket string, filename string) error {
 
 	file, _ := os.Open(filename)
 	defer file.Close()
@@ -256,4 +284,3 @@ func GeneratePresignedUrlGetObject(bucket string, key string) (string, error) {
 
 	return urlStr, err
 }
-

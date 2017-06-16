@@ -29,7 +29,7 @@ Clone the repository
 	git clone https://github.com/nanjekyejoannah/go_s3tests
 	cd go_s3tests
 
-You will need to create a configuration file with the location of the service and credentials. You can edit the config/app.toml.sample file available in the project. Make sure to save it as app.toml. You can also decide to make the config file a yaml or json. Just give it app.yaml or app.json for yaml and json respectively. The tests connect to the Ceph RGW ,therefore you shoud have started your RGW and use the credentials you get. The config file looks like this:
+You will need to create a configuration file with the location of the service and credentials. You can edit the config.toml.sample file available in the project. Make sure to save it as config.toml. You can also decide to make the config file a yaml or json. Just give it config.yaml or config.json for yaml and json respectively. The tests connect to the Ceph RGW ,therefore you shoud have started your RGW and use the credentials you get. The config file looks like this:
 
 	[DEFAULT]
 
