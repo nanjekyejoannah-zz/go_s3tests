@@ -31,10 +31,10 @@ func LoadConfig() error {
 
 var err = LoadConfig()
 
-var creds = credentials.NewStaticCredentials("s3main.access_key", "s3main.access_key", "")
+var creds = credentials.NewStaticCredentials(viper.GetString("s3main.access_key"), viper.GetString("s3main.access_secret"), "")
 
 var cfg = aws.NewConfig().WithRegion(viper.GetString("s3main.region")).
-	WithEndpoint("s3main.endpoint").
+	WithEndpoint(viper.GetString("s3main.endpoint")).
 	WithDisableSSL(true).
 	WithLogLevel(3).
 	WithS3ForcePathStyle(true).
@@ -64,10 +64,6 @@ func SliceContains(s []string, e string) bool {
 func CreateBucket(bucket string) error {
 
 	_, err := svc.CreateBucket(&s3.CreateBucketInput{
-		Bucket: aws.String(bucket),
-	})
-
-	err = svc.WaitUntilBucketExists(&s3.HeadBucketInput{
 		Bucket: aws.String(bucket),
 	})
 

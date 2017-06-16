@@ -355,3 +355,9 @@ func TestObjectCopyKeyNotFound(t *testing.T) {
 
 }
 
+//.....................................Test Getting Ranged Objects....................................................................................................................
+
+func TestRangedRequestResponseCode(t *testing.T) {
+
+	//assert := assert.New(t)
+}
