@@ -11,7 +11,6 @@ import (
 	"fmt"
 	"github.com/spf13/viper"
 	"io"
-	"os"
 	"strings"
 	"time"
 )
@@ -91,6 +90,22 @@ func PutObjectToBucket(bucket string, key string, content string) error {
 	return err
 }
 
+func CreateObjects(bucket string, objects map[string]string) error {
+
+	for key, content := range objects {
+
+		_, err := svc.PutObject(&s3.PutObjectInput{
+			Body:   strings.NewReader(content),
+			Bucket: &bucket,
+			Key:    &key,
+		})
+
+		err = err
+	}
+
+	return err
+}
+
 func DeleteBucket(bucket string) error {
 
 	_, err := svc.DeleteBucket(&s3.DeleteBucketInput{
@@ -119,6 +134,23 @@ func ListObjects(bucket string) ([]*s3.Object, error) {
 	})
 
 	return resp.Contents, err
+}
+
+func ListObjectsWithDelimeterAndPrefix(bucket string, prefix string, delimiter string) ([]*s3.Object, []string, error) {
+
+	resp, err := svc.ListObjects(&s3.ListObjectsInput{
+		Bucket: aws.String(bucket),
+		Prefix: aws.String(prefix),
+		Delimiter: aws.String(delimiter),
+	})
+
+	keys := []string {}
+
+	for _, key := range resp.Contents {
+		keys = append(keys, *key.Key)
+	}
+
+	return resp.Contents, keys, err
 }
 
 func GetObject(bucket string, key string) (string, error) {
@@ -203,7 +235,7 @@ func DeleteObjects(bucket string) error {
 	return err
 }
 
-func GetKeys(bucket string) ([]string, error) {
+func GetKeys(bucket string) (*s3.ListObjectsOutput, []string, error) {
 	var keys []string
 
 	resp, err := svc.ListObjects(&s3.ListObjectsInput{
@@ -214,10 +246,10 @@ func GetKeys(bucket string) ([]string, error) {
 		keys = append(keys, *key.Key)
 	}
 
-	return keys, err
+	return resp, keys, err
 }
 
-func GetKeysWithMaxKeys(bucket string, maxkeys int64) ([]string, error) {
+func GetKeysWithMaxKeys(bucket string, maxkeys int64) (*s3.ListObjectsOutput, []string, error) {
 	var keys []string
 
 	resp, err := svc.ListObjects(&s3.ListObjectsInput{
@@ -229,7 +261,22 @@ func GetKeysWithMaxKeys(bucket string, maxkeys int64) ([]string, error) {
 		keys = append(keys, *key.Key)
 	}
 
-	return keys, err
+	return resp, keys, err
+}
+
+func GetKeysWithMarker(bucket string, marker string) (*s3.ListObjectsOutput, []string, error) {
+	var keys []string
+
+	resp, err := svc.ListObjects(&s3.ListObjectsInput{
+		Bucket:  aws.String(bucket),
+		Marker:  aws.String(marker),
+	})
+
+	for _, key := range resp.Contents {
+		keys = append(keys, *key.Key)
+	}
+
+	return resp, keys, err
 }
 
 func GetKeysWithMaxKeysAndMarker(bucket string, maxkeys int64, marker string) ([]string, error) {
@@ -259,20 +306,6 @@ func CopyObject(other string, source string, item string) error {
 	return err
 }
 
-func SingleFileUpload(bucket string, filename string) error {
-
-	file, _ := os.Open(filename)
-	defer file.Close()
-
-	_, err := uploader.Upload(&s3manager.UploadInput{
-		Bucket: aws.String(bucket),
-		Key:    aws.String(filename),
-		Body:   file,
-	})
-
-	return err
-}
-
 func GeneratePresignedUrlGetObject(bucket string, key string) (string, error) {
 
 	req, _ := svc.GetObjectRequest(&s3.GetObjectInput{
@@ -284,3 +317,4 @@ func GeneratePresignedUrlGetObject(bucket string, key string) (string, error) {
 
 	return urlStr, err
 }
+

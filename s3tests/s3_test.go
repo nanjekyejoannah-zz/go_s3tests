@@ -24,6 +24,7 @@ func TestBucketCreateReadDelete(t *testing.T) {
 	assert.Nil(err)
 	assert.Equal(true, SliceContains(bkts, bucket))
 
+	err = DeleteObjects(bucket)
 	err = DeleteBucket(bucket)
 	assert.Nil(err)
 }
@@ -33,7 +34,7 @@ func TestBucketDeleteNonExistant(t *testing.T) {
 	// should not delete non existant bucket
 
 	assert := assert.New(t)
-	bucket := "bucket9"
+	bucket := "bucketZZ"
 
 	err := DeleteBucket(bucket)
 	assert.NotNil(err)
@@ -146,11 +147,11 @@ func TestBucketListMany(t *testing.T) {
 	assert.Nil(err)
 
 	var keys []string
-	keys, err = GetKeys(bucket)
+	_, keys, err = GetKeys(bucket)
 	assert.Nil(err)
 	assert.Equal(4, len(keys))
 
-	keys, err = GetKeysWithMaxKeys(bucket, 2)
+	_, keys, err = GetKeysWithMaxKeys(bucket, 2)
 	assert.Nil(err)
 	assert.Equal(2, len(keys))
 	assert.Equal(expected_keys, keys)
@@ -166,7 +167,226 @@ func TestBucketListMany(t *testing.T) {
 
 }
 
-//................................................Object Operations...............................................................................
+func TestBucketListMaxkeysInvalid(t *testing.T) {
+
+	/* 
+		Resource : Bucket , Method : get
+		Scenario : List all keys with invalid max key should fail. 
+		Assertion : invalid max_keys
+		Apparently it is passing on RGW. It should be failing with a max key value less than Zero.
+	*/
+
+	assert := assert.New(t)
+	bucket := "bucket1"
+	var maxkeys int64 = -9
+	objects := map[string]string{ "key1": "echo", "key2": "lima", "key3": "golf",}
+
+	err := CreateBucket(bucket)
+	err = CreateObjects(bucket, objects)
+	assert.Nil(err)
+
+	_, _, err = GetKeysWithMaxKeys(bucket, maxkeys)
+	assert.NotNil(err)
+
+	if err != nil {
+		if awsErr, ok := err.(awserr.Error); ok {
+
+			assert.Equal(awsErr.Code(), "InvalidArgument")
+			assert.Equal(awsErr.Message(), "")
+
+		}
+	}
+
+	err = DeleteObjects(bucket)
+	err = DeleteBucket(bucket)
+	assert.Nil(err)
+
+}
+
+func TestBucketListMaxkeysNone(t *testing.T) {
+
+	/* 
+		Resource : Bucket, Method: get
+		Operation : List all keys
+		Assertion : pagination w/o max_keys.
+	*/
+
+	assert := assert.New(t)
+	bucket := "bucket1"
+	objects := map[string]string{ "key1": "echo", "key2": "lima", "key3": "golf",}
+	ExpectedKeys :=[] string {"key1", "key2", "key3"}
+
+	err := CreateBucket(bucket)
+	err = CreateObjects(bucket, objects)
+	assert.Nil(err)
+
+	resp, keys, errr := GetKeys(bucket)
+	assert.Nil(errr)
+	assert.Equal(keys, ExpectedKeys)
+	assert.Equal(*resp.MaxKeys, int64(1000))
+	assert.Equal(*resp.IsTruncated, false)
+
+	err = DeleteObjects(bucket)
+	err = DeleteBucket(bucket)
+	assert.Nil(err)
+}
+
+func TestBucketListMaxkeysZero(t *testing.T) {
+
+	/* 
+		Resource : bucket, method: get
+		Operation : List all keys .
+		Assertion: pagination w/max_keys=0.
+	*/
+
+	assert := assert.New(t)
+	bucket := "bucket1"
+	maxkeys := int64(0)
+	objects := map[string]string{ "key1": "echo", "key2": "lima", "key3": "golf",}
+	ExpectedKeys := []string(nil)
+
+
+	err := CreateBucket(bucket)
+	err = CreateObjects(bucket, objects)
+	assert.Nil(err)
+
+	resp, keys, errr := GetKeysWithMaxKeys(bucket, maxkeys)
+	assert.Nil(errr)
+	assert.Equal(ExpectedKeys, keys)
+	assert.Equal(*resp.IsTruncated, false)
+
+	err = DeleteObjects(bucket)
+	err = DeleteBucket(bucket)
+	assert.Nil(err)
+}
+
+func TestBucketListMaxkeysOne(t *testing.T) {
+
+	/* 
+		Resource : bucket, method: get
+		Operation : List keys all keys. 
+		Assertion: pagination w/max_keys=1, marker.
+	*/
+
+	assert := assert.New(t)
+	bucket := "bucket1"
+	maxkeys := int64(1)
+	objects := map[string]string{ "key1": "echo", "key2": "lima", "key3": "golf",}
+	EKeysMaxkey := []string{"key1"}
+	EKeysMarker  := []string{"key2", "key3"}
+
+
+	err := CreateBucket(bucket)
+	err = CreateObjects(bucket, objects)
+	assert.Nil(err)
+
+	resp, keys, errr := GetKeysWithMaxKeys(bucket, maxkeys)
+	assert.Nil(errr)
+	assert.Equal(EKeysMaxkey, keys)
+	assert.Equal(*resp.IsTruncated, true)
+
+	resp, keys, errr = GetKeysWithMarker(bucket, EKeysMaxkey[0])
+	assert.Nil(errr)
+	assert.Equal(*resp.IsTruncated, false)
+	assert.Equal(EKeysMarker, keys)
+
+	err = DeleteObjects(bucket)
+	err = DeleteBucket(bucket)
+	assert.Nil(err)
+	
+}
+
+func TestBucketListPrefixDelimiterPrefixDelimiterNotExist(t *testing.T) {
+
+	/* 
+		Resource : bucket, method: get
+		Scenario : list under prefix w/delimiter. 
+		Assertion: finds nothing w/unmatched prefix and delimiter.
+	*/
+
+	assert := assert.New(t)
+	bucket := "bucket1"
+	prefix := "y"
+	delimeter := "z"
+	var empty_list []*s3.Object
+	objects := map[string]string{ "key1": "echo", "key2": "lima", "key3": "golf",}
+
+	err := CreateBucket(bucket)
+	err = CreateObjects(bucket, objects)
+	
+
+	list, k, errr := ListObjectsWithDelimeterAndPrefix(bucket, prefix, delimeter)
+	assert.Nil(errr)
+	assert.Equal([]string{}, k)
+	assert.Equal(empty_list, list)
+
+
+	err = DeleteObjects(bucket)
+	err = DeleteBucket(bucket)
+	assert.Nil(err)
+}
+
+func TestBucketListPrefixDelimiterDelimiterNotExist(t *testing.T) {
+
+	/* 
+		Resource : bucket, method: get
+		Scenario : list under prefix w/delimiter. 
+		Assertion: over-ridden slash ceases to be a delimiter.
+	*/
+
+	assert := assert.New(t)
+	bucket := "bucket1"
+	prefix := "b"
+	delimeter := "z"
+	objects := map[string]string{ "b/a/c": "echo", "b/a/g": "lima", "b/a/r": "golf",  "golffie": "golfyy",}
+	expectedkeys := []string {"b/a/c", "b/a/g", "b/a/r" }
+
+	err := CreateBucket(bucket)
+	err = CreateObjects(bucket, objects)
+
+	list, keys, errr := ListObjectsWithDelimeterAndPrefix(bucket, prefix, delimeter)
+	assert.Nil(errr)
+	assert.Equal(len(list), 3)
+	assert.Equal(expectedkeys, keys)
+
+	err = DeleteObjects(bucket)
+	err = DeleteBucket(bucket)
+	assert.Nil(err)
+	
+
+}
+
+func TestBucketListPrefixDelimiterPrefixPrefixNotExist(t *testing.T) {
+
+	/* 
+		Resource : bucket, method: get
+		Scenario : list under prefix w/delimiter. 
+		Assertion: finds nothing w/unmatched prefix and delimiter.
+	*/
+
+	assert := assert.New(t)
+	bucket := "bucket1"
+	prefix := "d"
+	delimeter := "/"
+	var empty_list []*s3.Object
+	objects := map[string]string{ "b/a/r": "echo", "b/a/c": "lima", "b/a/g": "golf", "g": "g"}
+
+	err := CreateBucket(bucket)
+	err = CreateObjects(bucket, objects)
+	
+
+	list, k, errr := ListObjectsWithDelimeterAndPrefix(bucket, prefix, delimeter)
+	assert.Nil(errr)
+	assert.Equal([]string{}, k)
+	assert.Equal(empty_list, list)
+
+
+	err = DeleteObjects(bucket)
+	err = DeleteBucket(bucket)
+	assert.Nil(err)
+}
+
+//........................................Tests for Object Operations..............................................................................
 
 func TestObjectReadNotExist(t *testing.T) {
 
@@ -192,7 +412,6 @@ func TestObjectReadNotExist(t *testing.T) {
 	}
 
 	err = DeleteBucket(bucket1)
-	assert.Nil(err)
 
 }
 
@@ -511,5 +730,9 @@ func TestGeneratePresignedUrlGetObject(t *testing.T) {
 	err = DeleteBucket(bucket)
 	assert.Nil(err)
 }
+
+
+
+
 
 
