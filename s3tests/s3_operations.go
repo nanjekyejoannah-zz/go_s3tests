@@ -136,7 +136,7 @@ func ListObjects(bucket string) ([]*s3.Object, error) {
 	return resp.Contents, err
 }
 
-func ListObjectsWithDelimeterAndPrefix(bucket string, prefix string, delimiter string) ([]*s3.Object, []string, error) {
+func ListObjectsWithDelimeterAndPrefix(bucket string, prefix string, delimiter string) (*s3.ListObjectsOutput, []string, error) {
 
 	resp, err := svc.ListObjects(&s3.ListObjectsInput{
 		Bucket: aws.String(bucket),
@@ -150,8 +150,41 @@ func ListObjectsWithDelimeterAndPrefix(bucket string, prefix string, delimiter s
 		keys = append(keys, *key.Key)
 	}
 
-	return resp.Contents, keys, err
+	return resp, keys, err
 }
+
+func ListObjectsWithPrefix(bucket string, prefix string) (*s3.ListObjectsOutput, []string, error) {
+
+	resp, err := svc.ListObjects(&s3.ListObjectsInput{
+		Bucket: aws.String(bucket),
+		Prefix: aws.String(prefix),
+	})
+
+	keys := []string {}
+
+	for _, key := range resp.Contents {
+		keys = append(keys, *key.Key)
+	}
+
+	return resp, keys, err
+}
+
+func ListObjectsWithDelimiter(bucket string, delimiter string) (*s3.ListObjectsOutput, []string, error) {
+
+	resp, err := svc.ListObjects(&s3.ListObjectsInput{
+		Bucket: aws.String(bucket),
+		Delimiter: aws.String(delimiter),
+	})
+
+	keys := []string {}
+
+	for _, key := range resp.Contents {
+		keys = append(keys, *key.Key)
+	}
+
+	return resp, keys, err
+}
+
 
 func GetObject(bucket string, key string) (string, error) {
 
