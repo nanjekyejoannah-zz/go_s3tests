@@ -846,7 +846,7 @@ func TestObjectListDelimiterWhiteSpace(t *testing.T) {
 	assert.Equal(*list.Delimiter, delimiter)
 
 	assert.Equal(keys, expected_keys)
-	assert.Equal(len(prefixes))
+	assert.Equal(len(prefixes), 2)
 	assert.Equal(prefixes, expected_prefixes)
 
 	err = DeleteObjects(bucket)
