@@ -136,7 +136,10 @@ func ListObjects(bucket string) ([]*s3.Object, error) {
 	return resp.Contents, err
 }
 
-func ListObjectsWithDelimeterAndPrefix(bucket string, prefix string, delimiter string) (*s3.ListObjectsOutput, []string, error) {
+func ListObjectsWithDelimeterAndPrefix(bucket string, prefix string, delimiter string) (*s3.ListObjectsOutput, []string, []string, error) {
+
+	keys := []string {}
+	prefixes := []string {}
 
 	resp, err := svc.ListObjects(&s3.ListObjectsInput{
 		Bucket: aws.String(bucket),
@@ -144,45 +147,57 @@ func ListObjectsWithDelimeterAndPrefix(bucket string, prefix string, delimiter s
 		Delimiter: aws.String(delimiter),
 	})
 
-	keys := []string {}
-
 	for _, key := range resp.Contents {
 		keys = append(keys, *key.Key)
 	}
 
-	return resp, keys, err
+	for _, commonPrefix := range resp.CommonPrefixes {
+        prefixes = append(prefixes, *commonPrefix.Prefix)
+    }
+
+	return resp, keys, prefixes, err
 }
 
-func ListObjectsWithPrefix(bucket string, prefix string) (*s3.ListObjectsOutput, []string, error) {
+func ListObjectsWithPrefix(bucket string, prefix string) (*s3.ListObjectsOutput, []string, []string, error) {
+
+	keys := []string {}
+	prefixes := []string {}
 
 	resp, err := svc.ListObjects(&s3.ListObjectsInput{
 		Bucket: aws.String(bucket),
 		Prefix: aws.String(prefix),
 	})
 
-	keys := []string {}
-
 	for _, key := range resp.Contents {
 		keys = append(keys, *key.Key)
 	}
 
-	return resp, keys, err
+	for _, commonPrefix := range resp.CommonPrefixes {
+        prefixes = append(prefixes, *commonPrefix.Prefix)
+    }
+
+	return resp, keys, prefixes, err
 }
 
-func ListObjectsWithDelimiter(bucket string, delimiter string) (*s3.ListObjectsOutput, []string, error) {
+func ListObjectsWithDelimiter(bucket string, delimiter string) (*s3.ListObjectsOutput, []string, []string, error) {
+
+	keys := []string {}
+	prefixes := []string {}
 
 	resp, err := svc.ListObjects(&s3.ListObjectsInput{
 		Bucket: aws.String(bucket),
 		Delimiter: aws.String(delimiter),
 	})
 
-	keys := []string {}
-
 	for _, key := range resp.Contents {
 		keys = append(keys, *key.Key)
 	}
 
-	return resp, keys, err
+    for _, commonPrefix := range resp.CommonPrefixes {
+        prefixes = append(prefixes, *commonPrefix.Prefix)
+    }
+
+	return resp, keys, prefixes, err
 }
 
 
