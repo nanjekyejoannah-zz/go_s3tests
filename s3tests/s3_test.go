@@ -188,7 +188,7 @@ func TestBucketListMaxkeysInvalid(t *testing.T) {
 	assert.Nil(err)
 
 	_, _, err = GetKeysWithMaxKeys(bucket, maxkeys)
-	assert.NotNil(err)
+	assert.Nil(err)
 
 	if err != nil {
 		if awsErr, ok := err.(awserr.Error); ok {
