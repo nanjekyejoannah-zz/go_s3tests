@@ -167,8 +167,6 @@ func TestBucketListMany(t *testing.T) {
 
 }
 
-//......................................Tests Bucket List with maxkeys................................................................................
-
 func TestBucketListMaxkeysInvalid(t *testing.T) {
 
 	/* 
@@ -298,7 +296,7 @@ func TestBucketListMaxkeysOne(t *testing.T) {
 	
 }
 
-//...................................tests svc.ListObjects with delimeter and prefix..........................................
+
 func TestObjectListPrefixDelimiterPrefixDelimiterNotExist(t *testing.T) {
 
 	/* 
