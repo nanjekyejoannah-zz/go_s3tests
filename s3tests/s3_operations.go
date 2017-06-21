@@ -69,17 +69,7 @@ func CreateBucket(bucket string) error {
 	return err
 }
 
-func CreateBucketAndKey(bucket string, key string) error {
-
-	_, err := svc.PutObject(&s3.PutObjectInput{
-		Bucket: aws.String(bucket),
-		Key:    aws.String(key),
-	})
-
-	return err
-}
-
-func PutObjectToBucket(bucket string, key string, content string) error {
+func PutObjectToBucket(bucket string, key string, content string) error { //deprecated
 
 	_, err := svc.PutObject(&s3.PutObjectInput{
 		Body:   strings.NewReader(content),
@@ -90,7 +80,7 @@ func PutObjectToBucket(bucket string, key string, content string) error {
 	return err
 }
 
-func CreateObjects(bucket string, objects map[string]string) error {
+func CreateObjects(bucket string, objects map[string]string) error { // for this
 
 	for key, content := range objects {
 
@@ -134,6 +124,15 @@ func ListObjects(bucket string) ([]*s3.Object, error) {
 	})
 
 	return resp.Contents, err
+}
+
+func GetObjects(bucket string) (*s3.ListObjectsOutput, error) {
+
+	resp, err := svc.ListObjects(&s3.ListObjectsInput{
+		Bucket: aws.String(bucket),
+	})
+
+	return resp, err
 }
 
 func ListObjectsWithDelimeterAndPrefix(bucket string, prefix string, delimiter string) (*s3.ListObjectsOutput, []string, []string, error) {

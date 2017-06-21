@@ -10,9 +10,13 @@ import (
 
 //.............Bucket Operations.............................................................
 
-func TestBucketCreateReadDelete(t *testing.T) {
+func TestBucketCreateDelete(t *testing.T) {
 
-	//should be able to create, delete and list buckets.
+	/* 
+		Resource : bucket, method: create/delete
+		Scenario : create and delete bucket. 
+		Assertion: bucket exists after create and is gone after delete.
+	*/
 
 	assert := assert.New(t)
 	bucket := "bucket1"
@@ -20,18 +24,25 @@ func TestBucketCreateReadDelete(t *testing.T) {
 	err := CreateBucket(bucket)
 	assert.Nil(err)
 
+	// make sure it is created
 	bkts, err := ListBuckets()
 	assert.Nil(err)
 	assert.Equal(true, SliceContains(bkts, bucket))
 
+	// make sure it is gone
 	err = DeleteObjects(bucket)
 	err = DeleteBucket(bucket)
+	assert.Equal(false, SliceContains(bkts, bucket))
 	assert.Nil(err)
 }
 
 func TestBucketDeleteNonExistant(t *testing.T) {
 
-	// should not delete non existant bucket
+	/* 
+		Resource : bucket, method: delete
+		Scenario : non exestant bucket 
+		Assertion: fails NoSuchBucket.
+	*/
 
 	assert := assert.New(t)
 	bucket := "bucketZZ"
@@ -44,7 +55,6 @@ func TestBucketDeleteNonExistant(t *testing.T) {
 
 			assert.Equal(awsErr.Code(), "NoSuchBucket")
 			assert.Equal(awsErr.Message(), "")
-			//assert.Equal(awsErr.Error().Code, 409)
 		}
 	}
 
@@ -52,15 +62,20 @@ func TestBucketDeleteNonExistant(t *testing.T) {
 
 func TestBucketDeleteNotEmpty(t *testing.T) {
 
-	// should not delete a bucket with contents
+	/* 
+		Resource : bucket, method: delete
+		Scenario : bucket not empty 
+		Assertion: fails BucketNotEmpty.
+	*/
 
 	assert := assert.New(t)
 	bucket := "bucket1"
+	objects := map[string]string{ "key1": "echo",}
 
 	err := CreateBucket(bucket)
 	assert.Nil(err)
 
-	err = PutObjectToBucket(bucket, "key1", "Hello")
+	err = CreateObjects(bucket, objects)
 
 	err = DeleteBucket(bucket)
 	assert.NotNil(err)
@@ -70,7 +85,6 @@ func TestBucketDeleteNotEmpty(t *testing.T) {
 
 			assert.Equal(awsErr.Code(), "BucketNotEmpty")
 			assert.Equal(awsErr.Message(), "")
-			//assert.Equal(awsErr.Error().Code, 409)
 		}
 	}
 
@@ -82,7 +96,11 @@ func TestBucketDeleteNotEmpty(t *testing.T) {
 
 func TestBucketListEmpty(t *testing.T) {
 
-	//empty bucket returns no contents
+	/* 
+		Resource : bucket, method: delete
+		Scenario : bucket not empty 
+		Assertion: fails BucketNotEmpty.
+	*/
 
 	assert := assert.New(t)
 	bucket := "bucket1"
@@ -91,9 +109,9 @@ func TestBucketListEmpty(t *testing.T) {
 	err := CreateBucket(bucket)
 	assert.Nil(err)
 
-	objects, err := ListObjects(bucket)
+	resp, err := GetObjects(bucket) 
 	assert.Nil(err)
-	assert.Equal(empty_list, objects)
+	assert.Equal(empty_list, resp.Contents)
 
 	err = DeleteBucket(bucket)
 	assert.Nil(err)
@@ -101,18 +119,24 @@ func TestBucketListEmpty(t *testing.T) {
 
 func TestBucketListDistinct(t *testing.T) {
 
-	// distinct buckets should have distinct contents
+	/* 
+		Resource : bucket, method: delete
+		Scenario : bucket not empty 
+		Assertion: distinct buckets have different contents.
+	*/
 
 	assert := assert.New(t)
 	bucket1 := "bucket1"
 	bucket2 := "bucket2"
+	objects1 := map[string]string{ "key1": "Hello",}
+	objects2 := map[string]string{ "key2": "Manze",}
 
 	err := CreateBucket(bucket1)
 	err = CreateBucket(bucket2)
 	assert.Nil(err)
 
-	err = PutObjectToBucket(bucket1, "key1", "Hello")
-	err = PutObjectToBucket(bucket2, "key2", "Manze")
+	err = CreateObjects(bucket1, objects1)
+	err = CreateObjects(bucket2, objects2)
 
 	obj1, _ := GetObject(bucket1, "key1")
 	obj2, _ := GetObject(bucket2, "key2")
@@ -128,38 +152,45 @@ func TestBucketListDistinct(t *testing.T) {
 
 }
 
-func TestBucketListMany(t *testing.T) {
+func TestObjectListMany(t *testing.T) {
 
-	// pagination w/max_keys=2, no marker
+	/* 
+		Resource : object, method: list
+		Scenario : list all keys 
+		Assertion: pagination w/max_keys=2, no marker.
+	*/
 
 	assert := assert.New(t)
-	bucket := "bucket11"
-	expected_keys := []string{"key1", "key2"}
-	//expected_key := []string{"key1"}
+	bucket := "bucket5"
+	maxkeys := 2
+	keys := []string{}
+	objects := map[string]string{ "foo": "echo", "bar": "lima", "baz": "golf",}
+	expected_keys := []string{"foo", "baz"}
 
 	err := CreateBucket(bucket)
+	err = CreateObjects(bucket, objects)
 	assert.Nil(err)
 
-	err = PutObjectToBucket(bucket, "key1", "echo")
-	err = PutObjectToBucket(bucket, "key2", "lima")
-	err = PutObjectToBucket(bucket, "key3", "golf")
-	err = PutObjectToBucket(bucket, "key4", "alpha")
-	assert.Nil(err)
+	resp, err := GetObjects(bucket)
+	resp.SetMaxKeys(int64(maxkeys))
+	assert.Equal(len(resp.Contents), 2)
+	assert.Equal(*resp.IsTruncated, true)
 
-	var keys []string
-	_, keys, err = GetKeys(bucket)
-	assert.Nil(err)
-	assert.Equal(4, len(keys))
+	for _, key := range resp.Contents {
+		keys = append(keys, *key.Key)
+	}
+	assert.Equal(keys, expected_keys)
 
-	_, keys, err = GetKeysWithMaxKeys(bucket, 2)
-	assert.Nil(err)
-	assert.Equal(2, len(keys))
-	assert.Equal(expected_keys, keys)
+	resp.SetMarker(expected_keys[1])
+	assert.Equal(len(resp.Contents), 1)
+	assert.Equal(*resp.IsTruncated, false)
+	expected_keys = []string{"foo"}
 
-	// keys, err = GetKeysWithMaxKeysAndMarker(bucket, 2, expected_keys[0] )
-	// assert.Nil(err)
-	// assert.Equal(1, len(keys))
-	// assert.Equal(expected_key, keys)
+	keys = []string{}
+	for _, key := range resp.Contents {
+		keys = append(keys, *key.Key)
+	}
+	assert.Equal(keys, expected_keys)
 
 	err = DeleteObjects(bucket)
 	err = DeleteBucket(bucket)
@@ -185,9 +216,10 @@ func TestBucketListMaxkeysInvalid(t *testing.T) {
 
 	err := CreateBucket(bucket)
 	err = CreateObjects(bucket, objects)
-	assert.Nil(err)
+	assert.NotNil(err)
 
-	_, _, err = GetKeysWithMaxKeys(bucket, maxkeys)
+	resp, err := GetObjects(bucket)
+	resp.SetMaxKeys(maxkeys)
 	assert.NotNil(err)
 
 	if err != nil {
@@ -214,7 +246,7 @@ func TestBucketListMaxkeysNone(t *testing.T) {
 	*/
 
 	assert := assert.New(t)
-	bucket := "bucket1"
+	bucket := "bucket4"
 	objects := map[string]string{ "key1": "echo", "key2": "lima", "key3": "golf",}
 	ExpectedKeys :=[] string {"key1", "key2", "key3"}
 
@@ -222,8 +254,13 @@ func TestBucketListMaxkeysNone(t *testing.T) {
 	err = CreateObjects(bucket, objects)
 	assert.Nil(err)
 
-	resp, keys, errr := GetKeys(bucket)
-	assert.Nil(errr)
+	resp, err := GetObjects(bucket)
+	assert.Nil(err)
+
+	keys := []string{}
+	for _, key := range resp.Contents {
+		keys = append(keys, *key.Key)
+	}
 	assert.Equal(keys, ExpectedKeys)
 	assert.Equal(*resp.MaxKeys, int64(1000))
 	assert.Equal(*resp.IsTruncated, false)
@@ -242,7 +279,7 @@ func TestBucketListMaxkeysZero(t *testing.T) {
 	*/
 
 	assert := assert.New(t)
-	bucket := "bucket1"
+	bucket := "bucketz"
 	maxkeys := int64(0)
 	objects := map[string]string{ "key1": "echo", "key2": "lima", "key3": "golf",}
 	ExpectedKeys := []string(nil)
@@ -252,8 +289,13 @@ func TestBucketListMaxkeysZero(t *testing.T) {
 	err = CreateObjects(bucket, objects)
 	assert.Nil(err)
 
-	resp, keys, errr := GetKeysWithMaxKeys(bucket, maxkeys)
-	assert.Nil(errr)
+	resp, err := GetObjects(bucket)
+	resp.SetMaxKeys(maxkeys)
+
+	keys := []string{}
+	for _, key := range resp.Contents {
+		keys = append(keys, *key.Key)
+	}
 	assert.Equal(ExpectedKeys, keys)
 	assert.Equal(*resp.IsTruncated, false)
 
@@ -271,7 +313,7 @@ func TestBucketListMaxkeysOne(t *testing.T) {
 	*/
 
 	assert := assert.New(t)
-	bucket := "bucket1"
+	bucket := "buckety"
 	maxkeys := int64(1)
 	objects := map[string]string{ "key1": "echo", "key2": "lima", "key3": "golf",}
 	EKeysMaxkey := []string{"key1"}
@@ -282,13 +324,24 @@ func TestBucketListMaxkeysOne(t *testing.T) {
 	err = CreateObjects(bucket, objects)
 	assert.Nil(err)
 
-	resp, keys, errr := GetKeysWithMaxKeys(bucket, maxkeys)
-	assert.Nil(errr)
+	resp, errr := GetObjects(bucket)
+	resp.SetMaxKeys(maxkeys)
+
+	keys := []string{}
+	for _, key := range resp.Contents {
+		keys = append(keys, *key.Key)
+	}
 	assert.Equal(EKeysMaxkey, keys)
 	assert.Equal(*resp.IsTruncated, true)
 
-	resp, keys, errr = GetKeysWithMarker(bucket, EKeysMaxkey[0])
+	resp, errr = GetObjects(bucket)
+	resp.SetMaxKeys(maxkeys)
 	assert.Nil(errr)
+
+	keys = []string{}
+	for _, key := range resp.Contents {
+		keys = append(keys, *key.Key)
+	}
 	assert.Equal(*resp.IsTruncated, false)
 	assert.Equal(EKeysMarker, keys)
 
@@ -298,7 +351,7 @@ func TestBucketListMaxkeysOne(t *testing.T) {
 	
 }
 
-//...................................tests svc.ListObjects with delimeter and prefix..........................................
+//...................................tests for ListObjects with delimeter and prefix..........................................
 func TestObjectListPrefixDelimiterPrefixDelimiterNotExist(t *testing.T) {
 
 	/* 
@@ -308,7 +361,7 @@ func TestObjectListPrefixDelimiterPrefixDelimiterNotExist(t *testing.T) {
 	*/
 
 	assert := assert.New(t)
-	bucket := "bucket1"
+	bucket := "bucketf"
 	prefix := "y"
 	delimeter := "z"
 	var empty_list []*s3.Object
@@ -317,12 +370,25 @@ func TestObjectListPrefixDelimiterPrefixDelimiterNotExist(t *testing.T) {
 	err := CreateBucket(bucket)
 	err = CreateObjects(bucket, objects)
 	
+	resp , err := GetObjects(bucket)
+	resp.SetPrefix(prefix)
+	resp.SetDelimiter(delimeter)
+	assert.Equal(*resp.Prefix, prefix)
+	assert.Equal(*resp.Delimiter, delimeter)
 
-	list, keys, prefixes, errr := ListObjectsWithDelimeterAndPrefix(bucket, prefix, delimeter)
-	assert.Nil(errr)
+	keys := []string{}
+	for _, key := range resp.Contents {
+		keys = append(keys, *key.Key)
+	}
 	assert.Equal(keys, []string{})
+
+	prefixes := []string{}
+	for _, commonPrefix := range resp.CommonPrefixes {
+        prefixes = append(prefixes, *commonPrefix.Prefix)
+    }
 	assert.Equal(prefixes, []string{})
-	assert.Equal(empty_list, list.Contents)
+
+	assert.Equal(empty_list, resp.Contents)
 
 
 	err = DeleteObjects(bucket)
@@ -339,7 +405,7 @@ func TestObjectListPrefixDelimiterDelimiterNotExist(t *testing.T) {
 	*/
 
 	assert := assert.New(t)
-	bucket := "bucket1"
+	bucket := "bucketd"
 	prefix := "b"
 	delimeter := "z"
 	objects := map[string]string{ "b/a/c": "echo", "b/a/g": "lima", "b/a/r": "golf",  "golffie": "golfyy",}
@@ -348,12 +414,26 @@ func TestObjectListPrefixDelimiterDelimiterNotExist(t *testing.T) {
 	err := CreateBucket(bucket)
 	err = CreateObjects(bucket, objects)
 
-	list, keys, prefixes, errr := ListObjectsWithDelimeterAndPrefix(bucket, prefix, delimeter)
-	assert.Nil(errr)
-	assert.Equal(len(list.Contents), 3)
-	assert.Equal(keys, expectedkeys)
-	assert.Equal(prefixes, []string{})
+	resp, err := GetObjects(bucket)
+	resp.SetPrefix(prefix)
+	resp.SetDelimiter(delimeter)
+	assert.Equal(*resp.Prefix, prefix)
+	assert.Equal(*resp.Delimiter, delimeter)
 
+	keys := []string{}
+	for _, key := range resp.Contents {
+		keys = append(keys, *key.Key)
+	}
+	assert.Equal(keys, expectedkeys)
+
+	prefixes := []string{}
+	for _, commonPrefix := range resp.CommonPrefixes {
+        prefixes = append(prefixes, *commonPrefix.Prefix)
+    }
+    assert.Equal(prefixes, []string{})
+
+	assert.Equal(len(resp.Contents), 3)
+	
 	err = DeleteObjects(bucket)
 	err = DeleteBucket(bucket)
 	assert.Nil(err)
@@ -370,7 +450,7 @@ func TestObjectListPrefixDelimiterPrefixNotExist(t *testing.T) {
 	*/
 
 	assert := assert.New(t)
-	bucket := "bucket1"
+	bucket := "bucketv"
 	prefix := "d"
 	delimeter := "/"
 	var empty_list []*s3.Object
@@ -380,11 +460,25 @@ func TestObjectListPrefixDelimiterPrefixNotExist(t *testing.T) {
 	err = CreateObjects(bucket, objects)
 	
 
-	list, keys, prefixes, errr := ListObjectsWithDelimeterAndPrefix(bucket, prefix, delimeter)
-	assert.Nil(errr)
+	resp, err := GetObjects(bucket)
+	resp.SetDelimiter(delimeter)
+	resp.SetPrefix(prefix)
+	assert.Equal(*resp.Prefix, prefix)
+	assert.Equal(*resp.Delimiter, delimeter)
+
+	keys := []string{}
+	for _, key := range resp.Contents {
+		keys = append(keys, *key.Key)
+	}
 	assert.Equal(keys, []string{})
+
+	prefixes := []string{}
+	for _, commonPrefix := range resp.CommonPrefixes {
+        prefixes = append(prefixes, *commonPrefix.Prefix)
+    }
 	assert.Equal(prefixes, []string{})
-	assert.Equal(empty_list, list.Contents)
+
+	assert.Equal(empty_list, resp.Contents)
 
 
 	err = DeleteObjects(bucket)
@@ -401,7 +495,7 @@ func TestObjectListPrefixDelimiterAlt(t *testing.T) {
 	*/
 
 	assert := assert.New(t)
-	bucket := "bucket1"
+	bucket := "buckett"
 	prefix := "ba"
 	delimeter := "a"
 	objects := map[string]string{ "bar": "echo", "bazar": "lima", "cab": "golf", "foo": "g"}
@@ -411,14 +505,23 @@ func TestObjectListPrefixDelimiterAlt(t *testing.T) {
 	err := CreateBucket(bucket)
 	err = CreateObjects(bucket, objects)
 	assert.Nil(err)
-	
 
-	list, keys, prefixes, errr := ListObjectsWithDelimeterAndPrefix(bucket, prefix, delimeter)
-	assert.Nil(errr)
-	assert.Equal(*list.Prefix, prefix)
-	assert.Equal(*list.Delimiter, delimeter)
+	resp, err := GetObjects(bucket)
+	resp.SetPrefix(prefix)
+	resp.SetDelimiter(delimeter)
+	assert.Equal(*resp.Prefix, prefix)
+	assert.Equal(*resp.Delimiter, delimeter)
 
+	keys := []string{}
+	for _, key := range resp.Contents {
+		keys = append(keys, *key.Key)
+	}
 	assert.Equal(keys, expected_keys)
+
+	prefixes := []string{}
+	for _, commonPrefix := range resp.CommonPrefixes {
+        prefixes = append(prefixes, *commonPrefix.Prefix)
+    }
 	assert.Equal(prefixes, expected_prefixes)
 
 	err = DeleteObjects(bucket)
@@ -435,7 +538,7 @@ func TestObjectListPrefixDelimiterBasic(t *testing.T) {
 	*/
 
 	assert := assert.New(t)
-	bucket := "bucket1"
+	bucket := "bucket3"
 	prefix := "foo/"
 	delimeter := "/"
 	objects := map[string]string{ "foo/bar": "echo", "foo/baz/xyzzy": "lima", "quux/thud": "golf"}
@@ -447,12 +550,22 @@ func TestObjectListPrefixDelimiterBasic(t *testing.T) {
 	assert.Nil(err)
 	
 
-	list, keys, prefixes, errr := ListObjectsWithDelimeterAndPrefix(bucket, prefix, delimeter)
-	assert.Nil(errr)
-	assert.Equal(*list.Prefix, prefix)
+	resp, err := GetObjects(bucket)
+	resp.SetPrefix(prefix)
+	resp.SetDelimiter(delimeter)
+	assert.Equal(*resp.Prefix, prefix)
+	assert.Equal(*resp.Delimiter, delimeter)
 
-	assert.Equal(*list.Delimiter, delimeter)
+	keys := []string{}
+	for _, key := range resp.Contents {
+		keys = append(keys, *key.Key)
+	}
 	assert.Equal(keys, expected_keys)
+
+	prefixes := []string{}
+	for _, commonPrefix := range resp.CommonPrefixes {
+        prefixes = append(prefixes, *commonPrefix.Prefix)
+    }
 	assert.Equal(prefixes, expected_prefixes)
 
 	err = DeleteObjects(bucket)
@@ -469,7 +582,7 @@ func TestObjectListPrefixUnreadable(t *testing.T) {
 	*/
 
 	assert := assert.New(t)
-	bucket := "bucket1"
+	bucket := "bucket0"
 	prefix := "\x0a"
 	objects := map[string]string{ "foo/bar": "echo", "foo/baz/xyzzy": "lima", "quux/thud": "golf"}
 	expected_keys := [] string {}
@@ -480,11 +593,20 @@ func TestObjectListPrefixUnreadable(t *testing.T) {
 	assert.Nil(err)
 	
 
-	list, keys, prefixes, errr := ListObjectsWithPrefix(bucket, prefix)
-	assert.Nil(errr)
-	assert.Equal(*list.Prefix, prefix)
+	resp, err := GetObjects(bucket)
+	resp.SetPrefix(prefix)
+	assert.Equal(*resp.Prefix, prefix)
 
+	prefixes := []string{}
+	for _, commonPrefix := range resp.CommonPrefixes {
+        prefixes = append(prefixes, *commonPrefix.Prefix)
+    }
 	assert.Equal(prefixes, expected_prefixes)
+
+	keys := []string{}
+	for _, key := range resp.Contents {
+		keys = append(keys, *key.Key)
+	}
 	assert.Equal(keys, expected_keys)
 
 	err = DeleteObjects(bucket)
@@ -501,7 +623,7 @@ func TestObjectListPrefixNotExist(t *testing.T) {
 	*/
 
 	assert := assert.New(t)
-	bucket := "bucket1"
+	bucket := "bucketm"
 	prefix := "d"
 	objects := map[string]string{ "foo/bar": "echo", "foo/baz": "lima", "quux": "golf",}
 	expected_keys := [] string {}
@@ -512,11 +634,20 @@ func TestObjectListPrefixNotExist(t *testing.T) {
 	assert.Nil(err)
 	
 
-	list, keys, prefixes, errr := ListObjectsWithPrefix(bucket, prefix)
-	assert.Nil(errr)
-	assert.Equal(*list.Prefix, prefix)
+	resp, err := GetObjects(bucket)
+	resp.SetPrefix(prefix)
+	assert.Equal(*resp.Prefix, prefix)
 
+	keys := []string{}
+	for _, key := range resp.Contents {
+		keys = append(keys, *key.Key)
+	}
 	assert.Equal(keys, expected_keys)
+
+	prefixes := []string{}
+	for _, commonPrefix := range resp.CommonPrefixes {
+        prefixes = append(prefixes, *commonPrefix.Prefix)
+    }
 	assert.Equal(prefixes, expected_prefixes)
 
 	err = DeleteObjects(bucket)
@@ -533,7 +664,7 @@ func TestObjectListPrefixNone(t *testing.T) {
 	*/
 
 	assert := assert.New(t)
-	bucket := "bucket1"
+	bucket := "bucketw"
 	prefix := ""
 	objects := map[string]string{ "foo/bar": "echo", "foo/baz": "lima", "quux": "golf",}
 	expected_keys := [] string {"foo/bar", "foo/baz", "quux" }
@@ -544,11 +675,20 @@ func TestObjectListPrefixNone(t *testing.T) {
 	assert.Nil(err)
 	
 
-	list, keys, prefixes, errr := ListObjectsWithPrefix(bucket, prefix)
-	assert.Nil(errr)
-	assert.Equal(*list.Prefix, prefix)
+	resp, err := GetObjects(bucket)
+	resp.SetPrefix(prefix)
+	assert.Equal(*resp.Prefix, prefix)
 
+	keys := []string{}
+	for _, key := range resp.Contents {
+		keys = append(keys, *key.Key)
+	}
 	assert.Equal(keys, expected_keys)
+
+	prefixes := []string{}
+	for _, commonPrefix := range resp.CommonPrefixes {
+        prefixes = append(prefixes, *commonPrefix.Prefix)
+    }
 	assert.Equal(prefixes, expected_prefixes)
 
 	err = DeleteObjects(bucket)
@@ -565,7 +705,7 @@ func TestObjectListPrefixEmpty(t *testing.T) {
 	*/
 
 	assert := assert.New(t)
-	bucket := "bucket1"
+	bucket := "bucketq"
 	prefix := ""
 	objects := map[string]string{ "foo/bar": "echo", "foo/baz": "lima", "quux": "golf",}
 	expected_keys := [] string {"foo/bar", "foo/baz", "quux" }
@@ -576,11 +716,20 @@ func TestObjectListPrefixEmpty(t *testing.T) {
 	assert.Nil(err)
 	
 
-	list, keys, prefixes, errr := ListObjectsWithPrefix(bucket, prefix)
-	assert.Nil(errr)
-	assert.Equal(*list.Prefix, prefix)
+	resp, err := GetObjects(bucket)
+	resp.SetPrefix(prefix)
+	assert.Equal(*resp.Prefix, prefix)
 
+	keys := []string{}
+	for _, key := range resp.Contents {
+		keys = append(keys, *key.Key)
+	}
 	assert.Equal(keys, expected_keys)
+
+	prefixes := []string{}
+	for _, commonPrefix := range resp.CommonPrefixes {
+        prefixes = append(prefixes, *commonPrefix.Prefix)
+    }
 	assert.Equal(prefixes, expected_prefixes)
 
 	err = DeleteObjects(bucket)
@@ -598,7 +747,7 @@ func TestObjectListPrefixAlt(t *testing.T) {
 	*/
 
 	assert := assert.New(t)
-	bucket := "bucket1"
+	bucket := "bucketx"
 	prefix := "ba"
 	objects := map[string]string{ "bar": "echo", "baz": "lima", "foo": "golf",}
 	expected_keys := [] string {"bar", "baz"}
@@ -609,11 +758,20 @@ func TestObjectListPrefixAlt(t *testing.T) {
 	assert.Nil(err)
 	
 
-	list, keys, prefixes, errr := ListObjectsWithPrefix(bucket, prefix)
-	assert.Nil(errr)
-	assert.Equal(*list.Prefix, prefix)
+	resp, err := GetObjects(bucket)
+	resp.SetPrefix(prefix)
+	assert.Equal(*resp.Prefix, prefix)
 
+	keys := []string{}
+	for _, key := range resp.Contents {
+		keys = append(keys, *key.Key)
+	}
 	assert.Equal(keys, expected_keys)
+
+	prefixes := []string{}
+	for _, commonPrefix := range resp.CommonPrefixes {
+        prefixes = append(prefixes, *commonPrefix.Prefix)
+    }
 	assert.Equal(prefixes, expected_prefixes)
 
 	err = DeleteObjects(bucket)
@@ -631,7 +789,7 @@ func TestObjectListPrefixBasic(t *testing.T) {
 	*/
 
 	assert := assert.New(t)
-	bucket := "bucket1"
+	bucket := "bucketp"
 	prefix := "foo/"
 	objects := map[string]string{ "foo/bar": "echo", "foo/baz": "lima", "quux": "golf",}
 	expected_keys := [] string {"foo/bar", "foo/baz"}
@@ -642,11 +800,20 @@ func TestObjectListPrefixBasic(t *testing.T) {
 	assert.Nil(err)
 	
 
-	list, keys, prefixes, errr := ListObjectsWithPrefix(bucket, prefix)
-	assert.Nil(errr)
-	assert.Equal(*list.Prefix, prefix)
+	resp, err := GetObjects(bucket)
+	resp.SetPrefix(prefix)
+	assert.Equal(*resp.Prefix, prefix)
 
+	keys := []string{}
+	for _, key := range resp.Contents {
+		keys = append(keys, *key.Key)
+	}
 	assert.Equal(keys, expected_keys)
+
+	prefixes := []string{}
+	for _, commonPrefix := range resp.CommonPrefixes {
+        prefixes = append(prefixes, *commonPrefix.Prefix)
+    }
 	assert.Equal(prefixes, expected_prefixes)
 
 	err = DeleteObjects(bucket)
@@ -664,7 +831,7 @@ func TestObjectListDelimiterNotExist(t *testing.T) {
 	*/
 
 	assert := assert.New(t)
-	bucket := "bucket1"
+	bucket := "bucket11"
 	delimiter := "/"
 	objects := map[string]string{ "bar": "echo", "baz": "lima", "cab": "golf", "foo": "golf",}
 	expected_keys := [] string {"bar", "baz", "cab", "foo"}
@@ -675,11 +842,20 @@ func TestObjectListDelimiterNotExist(t *testing.T) {
 	assert.Nil(err)
 	
 
-	list, keys, prefixes, errr := ListObjectsWithDelimiter(bucket, delimiter)
-	assert.Nil(errr)
-	assert.Equal(*list.Delimiter, delimiter)
+	resp, err := GetObjects(bucket)
+	resp.SetDelimiter(delimiter)
+	assert.Equal(*resp.Delimiter, delimiter)
 
+	keys := []string{}
+	for _, key := range resp.Contents {
+		keys = append(keys, *key.Key)
+	}
 	assert.Equal(keys, expected_keys)
+
+	prefixes := []string{}
+	for _, commonPrefix := range resp.CommonPrefixes {
+        prefixes = append(prefixes, *commonPrefix.Prefix)
+    }
 	assert.Equal(prefixes, expected_prefixes)
 
 	err = DeleteObjects(bucket)
@@ -697,7 +873,7 @@ func TestObjectListDelimiterNone(t *testing.T) {
 	*/
 
 	assert := assert.New(t)
-	bucket := "bucket1"
+	bucket := "bucket12"
 	delimiter := " "
 	objects := map[string]string{ "bar": "echo", "baz": "lima", "cab": "golf", "foo": "golf",}
 	expected_keys := [] string {"bar", "baz", "cab", "foo"}
@@ -708,11 +884,20 @@ func TestObjectListDelimiterNone(t *testing.T) {
 	assert.Nil(err)
 	
 
-	list, keys, prefixes, errr := ListObjectsWithDelimiter(bucket, delimiter)
-	assert.Nil(errr)
-	assert.Equal(*list.Delimiter, delimiter)
+	resp, err := GetObjects(bucket)
+	resp.SetDelimiter(delimiter)
+	assert.Equal(*resp.Delimiter, delimiter)
 
+	keys := []string{}
+	for _, key := range resp.Contents {
+		keys = append(keys, *key.Key)
+	}
 	assert.Equal(keys, expected_keys)
+
+	prefixes := []string{}
+	for _, commonPrefix := range resp.CommonPrefixes {
+        prefixes = append(prefixes, *commonPrefix.Prefix)
+    }
 	assert.Equal(prefixes, expected_prefixes)
 
 	err = DeleteObjects(bucket)
@@ -730,7 +915,7 @@ func TestObjectListDelimiterEmpty(t *testing.T) {
 	*/
 
 	assert := assert.New(t)
-	bucket := "bucket1"
+	bucket := "bucket21"
 	delimiter := " "
 	objects := map[string]string{ "bar": "echo", "baz": "lima", "cab": "golf", "foo": "golf",}
 	expected_keys := [] string {"bar", "baz", "cab", "foo"}
@@ -741,11 +926,20 @@ func TestObjectListDelimiterEmpty(t *testing.T) {
 	assert.Nil(err)
 	
 
-	list, keys, prefixes, errr := ListObjectsWithDelimiter(bucket, delimiter)
-	assert.Nil(errr)
-	assert.Equal(*list.Delimiter, delimiter)
+	resp, err := GetObjects(bucket)
+	resp.SetDelimiter(delimiter)
+	assert.Equal(*resp.Delimiter, delimiter)
 
+	keys := []string{}
+	for _, key := range resp.Contents {
+		keys = append(keys, *key.Key)
+	}
 	assert.Equal(keys, expected_keys)
+
+	prefixes := []string{}
+	for _, commonPrefix := range resp.CommonPrefixes {
+        prefixes = append(prefixes, *commonPrefix.Prefix)
+    }
 	assert.Equal(prefixes, expected_prefixes)
 
 	err = DeleteObjects(bucket)
@@ -763,7 +957,7 @@ func TestObjectListDelimiterUnreadable(t *testing.T) {
 	*/
 
 	assert := assert.New(t)
-	bucket := "bucket1"
+	bucket := "bucket31"
 	delimiter := "\x0a"
 	objects := map[string]string{ "bar": "echo", "baz": "lima", "cab": "golf", "foo": "golf",}
 	expected_keys := [] string {"bar", "baz", "cab", "foo"}
@@ -773,12 +967,20 @@ func TestObjectListDelimiterUnreadable(t *testing.T) {
 	err = CreateObjects(bucket, objects)
 	assert.Nil(err)
 	
+	resp, err := GetObjects(bucket)
+	resp.SetDelimiter(delimiter)
+	assert.Equal(*resp.Delimiter, delimiter)
 
-	list, keys, prefixes, errr := ListObjectsWithDelimiter(bucket, delimiter)
-	assert.Nil(errr)
-	assert.Equal(*list.Delimiter, delimiter)
-
+	keys := []string{}
+	for _, key := range resp.Contents {
+		keys = append(keys, *key.Key)
+	}
 	assert.Equal(keys, expected_keys)
+
+	prefixes := []string{}
+	for _, commonPrefix := range resp.CommonPrefixes {
+        prefixes = append(prefixes, *commonPrefix.Prefix)
+    }
 	assert.Equal(prefixes, expected_prefixes)
 
 	err = DeleteObjects(bucket)
@@ -796,7 +998,7 @@ func TestObjectListDelimiterDot(t *testing.T) {
 	*/
 
 	assert := assert.New(t)
-	bucket := "bucket1"
+	bucket := "bucket71"
 	delimiter := "."
 	objects := map[string]string{ "b.ar": "echo", "b.az": "lima", "c.ab": "golf", "foo": "golf",}
 	expected_keys := [] string {"foo"}
@@ -807,11 +1009,20 @@ func TestObjectListDelimiterDot(t *testing.T) {
 	assert.Nil(err)
 	
 
-	list, keys, prefixes, errr := ListObjectsWithDelimiter(bucket, delimiter)
-	assert.Nil(errr)
-	assert.Equal(*list.Delimiter, delimiter)
+	resp, err := GetObjects(bucket)
+	resp.SetDelimiter(delimiter)
+	assert.Equal(*resp.Delimiter, delimiter)
 
+	keys := []string{}
+	for _, key := range resp.Contents {
+		keys = append(keys, *key.Key)
+	}
 	assert.Equal(keys, expected_keys)
+
+	prefixes := []string{}
+	for _, commonPrefix := range resp.CommonPrefixes {
+        prefixes = append(prefixes, *commonPrefix.Prefix)
+    }
 	assert.Equal(len(prefixes), 2)
 	assert.Equal(prefixes, expected_prefixes)
 
@@ -830,7 +1041,7 @@ func TestObjectListDelimiterWhiteSpace(t *testing.T) {
 	*/
 
 	assert := assert.New(t)
-	bucket := "bucket1"
+	bucket := "bucket71"
 	delimiter := " "
 	objects := map[string]string{ "b ar": "echo", "b az": "lima", "c ab": "golf", "foo": "golf",}
 	expected_keys := [] string {"foo"}
@@ -841,11 +1052,20 @@ func TestObjectListDelimiterWhiteSpace(t *testing.T) {
 	assert.Nil(err)
 	
 
-	list, keys, prefixes, errr := ListObjectsWithDelimiter(bucket, delimiter)
-	assert.Nil(errr)
-	assert.Equal(*list.Delimiter, delimiter)
+	resp, err := GetObjects(bucket)
+	resp.SetDelimiter(delimiter)
+	assert.Equal(*resp.Delimiter, delimiter)
 
+	keys := []string{}
+	for _, key := range resp.Contents {
+		keys = append(keys, *key.Key)
+	}
 	assert.Equal(keys, expected_keys)
+
+	prefixes := []string{}
+	for _, commonPrefix := range resp.CommonPrefixes {
+        prefixes = append(prefixes, *commonPrefix.Prefix)
+    }
 	assert.Equal(len(prefixes), 2)
 	assert.Equal(prefixes, expected_prefixes)
 
@@ -864,7 +1084,7 @@ func TestObjectListDelimiterPercentage(t *testing.T) {
 	*/
 
 	assert := assert.New(t)
-	bucket := "bucket1"
+	bucket := "bucket81"
 	delimiter := "%"
 	objects := map[string]string{ "b%ar": "echo", "b%az": "lima", "c%ab": "golf", "foo": "golf",}
 	expected_keys := [] string {"foo"}
@@ -875,11 +1095,20 @@ func TestObjectListDelimiterPercentage(t *testing.T) {
 	assert.Nil(err)
 	
 
-	list, keys, prefixes, errr := ListObjectsWithDelimiter(bucket, delimiter)
-	assert.Nil(errr)
-	assert.Equal(*list.Delimiter, delimiter)
+	resp, err := GetObjects(bucket)
+	resp.SetDelimiter(delimiter)
+	assert.Equal(*resp.Delimiter, delimiter)
 
+	keys := []string{}
+	for _, key := range resp.Contents {
+		keys = append(keys, *key.Key)
+	}
 	assert.Equal(keys, expected_keys)
+
+	prefixes := []string{}
+	for _, commonPrefix := range resp.CommonPrefixes {
+        prefixes = append(prefixes, *commonPrefix.Prefix)
+    }
 	assert.Equal(len(prefixes), 2)
 	assert.Equal(prefixes, expected_prefixes)
 
@@ -898,7 +1127,7 @@ func TestObjectListDelimiterAlt(t *testing.T) {
 	*/
 
 	assert := assert.New(t)
-	bucket := "bucket1"
+	bucket := "bucket1f"
 	delimiter := "a"
 	objects := map[string]string{ "bar": "echo", "baz": "lima", "cab": "golf", "foo": "golf",}
 	expected_keys := [] string {"foo"}
@@ -909,11 +1138,20 @@ func TestObjectListDelimiterAlt(t *testing.T) {
 	assert.Nil(err)
 	
 
-	list, keys, prefixes, errr := ListObjectsWithDelimiter(bucket, delimiter)
-	assert.Nil(errr)
-	assert.Equal(*list.Delimiter, delimiter)
+	resp, err := GetObjects(bucket)
+	resp.SetDelimiter(delimiter)
+	assert.Equal(*resp.Delimiter, delimiter)
 
+	keys := []string{}
+	for _, key := range resp.Contents {
+		keys = append(keys, *key.Key)
+	}
 	assert.Equal(keys, expected_keys)
+
+	prefixes := []string{}
+	for _, commonPrefix := range resp.CommonPrefixes {
+        prefixes = append(prefixes, *commonPrefix.Prefix)
+    }
 	assert.Equal(len(prefixes), 2)
 	assert.Equal(prefixes, expected_prefixes)
 
@@ -932,7 +1170,7 @@ func TestObjectListDelimiterBasic(t *testing.T) {
 	*/
 
 	assert := assert.New(t)
-	bucket := "bucket1"
+	bucket := "bucketc1"
 	delimiter := "/"
 	objects := map[string]string{ "foo/bar": "echo", "foo/baz/xyzzy": "lima", "quux/thud": "golf", "asdf": "golf",}
 	expected_keys := [] string {"asdf"}
@@ -943,11 +1181,20 @@ func TestObjectListDelimiterBasic(t *testing.T) {
 	assert.Nil(err)
 	
 
-	list, keys, prefixes, errr := ListObjectsWithDelimiter(bucket, delimiter)
-	assert.Nil(errr)
-	assert.Equal(*list.Delimiter, delimiter)
+	resp, err := GetObjects(bucket)
+	resp.SetDelimiter(delimiter)
+	assert.Equal(*resp.Delimiter, delimiter)
 
+	keys := []string{}
+	for _, key := range resp.Contents {
+		keys = append(keys, *key.Key)
+	}
 	assert.Equal(keys, expected_keys)
+
+	prefixes := []string{}
+	for _, commonPrefix := range resp.CommonPrefixes {
+        prefixes = append(prefixes, *commonPrefix.Prefix)
+    }
 	assert.Equal(len(prefixes), 2)
 	assert.Equal(prefixes, expected_prefixes)
 
@@ -957,7 +1204,90 @@ func TestObjectListDelimiterBasic(t *testing.T) {
 	
 }
 
-//.............................................
+//............................................. list objects given marker ....................................................
+func TestObjectListMarkerBeforeList(t *testing.T) {
+
+	/* 
+		Resource : object, method: list
+		Scenario : list all keys. 
+		Assertion: marker before list.
+	*/
+
+	assert := assert.New(t)
+	bucket := "bucket61"
+	marker := "aaa"
+	keys := []string {}
+
+	objects := map[string]string{ "bar": "echo", "baz": "lima", "quux": "golf", }
+	expected_keys := [] string {"bar", "baz", "quux"}
+
+
+	err := CreateBucket(bucket)
+	err = CreateObjects(bucket, objects)
+	assert.Nil(err)
+
+	resp, errr := GetObjects(bucket)
+	assert.Nil(errr)
+	resp.SetMarker(marker)
+
+	assert.Equal(*resp.Marker, marker)
+	assert.Equal(*resp.IsTruncated, false)
+
+	for _, key := range resp.Contents {
+		keys = append(keys, *key.Key)
+	}
+
+	assert.Equal(keys, expected_keys)
+
+	err = DeleteObjects(bucket)
+	err = DeleteBucket(bucket)
+	assert.Nil(err)
+
+}
+
+func TestObjectListMarkerAfterList(t *testing.T) {
+
+	/* 
+		Resource : object, method: list
+		Scenario : list all keys. 
+		Assertion: marker after list.
+	*/
+
+	assert := assert.New(t)
+	bucket := "bucketx1"
+	marker := "resource/001/item-01"
+	keys := [] string {}
+
+	objects := map[string]string{ "resource/001/item-01": "echo", "resource/001/item-02": "lima", "resource/001/item-03": "golf", }
+	expected_keys := []string {"resource/001/item-02", "resource/001/item-01"}
+
+
+	err := CreateBucket(bucket)
+	err = CreateObjects(bucket, objects)
+	assert.Nil(err)
+
+	resp, errr := GetObjects(bucket)
+	assert.Nil(errr)
+	resp.SetMarker(marker)
+
+	assert.Equal(*resp.Marker, marker)
+	assert.Equal(*resp.IsTruncated, false)
+
+	for _, key := range resp.Contents {
+		keys = append(keys, *key.Key)
+	}
+
+	assert.Equal(keys, expected_keys)
+
+	err = DeleteObjects(bucket)
+	err = DeleteBucket(bucket)
+	assert.Nil(err)
+
+}
+
+
+
+//...................................................................................................
 
 
 func TestObjectReadNotExist(t *testing.T) {
@@ -978,7 +1308,6 @@ func TestObjectReadNotExist(t *testing.T) {
 
 			assert.Equal(awsErr.Code(), "NoSuchKey")
 			assert.Equal(awsErr.Message(), "")
-			//assert.Equal(awsErr.Error(), 404)
 
 		}
 	}
@@ -987,9 +1316,9 @@ func TestObjectReadNotExist(t *testing.T) {
 
 }
 
-func TestObjectWriteToNonExistBucket(t *testing.T) {
+func TestObjectReadFromNonExistBucket(t *testing.T) {
 
-	// writing to a non existant bucket should fail
+	// Reading from non exiatant bucket should fail.
 
 	assert := assert.New(t)
 	non_exixtant_bucket := "bucketz"
@@ -1278,33 +1607,6 @@ func TestRangedRequestEmptyObject(t *testing.T) {
 	err = DeleteObjects(bucket)
 	err = DeleteBucket(bucket)
 }
-
-//...........................Tests for Presign Url...........................................................................
-
-func TestGeneratePresignedUrlGetObject(t *testing.T) {
-
-	assert := assert.New(t)
-	bucket := "bucket1"
-	key := "key1"
-	url := ""
-
-	err := CreateBucket(bucket)
-	assert.Nil(err)
-
-	err = PutObjectToBucket(bucket, key, "hello")
-	assert.Nil(err)
-
-	url, err = GeneratePresignedUrlGetObject(bucket, key)
-	assert.Nil(err)
-	assert.NotEqual("", url)
-
-	err = DeleteObjects(bucket)
-	err = DeleteBucket(bucket)
-	assert.Nil(err)
-}
-
-
-
 
 
 
