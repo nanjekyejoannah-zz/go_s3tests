@@ -198,8 +198,6 @@ func TestObjectListMany(t *testing.T) {
 
 }
 
-//......................................Tests Bucket List with maxkeys................................................................................
-
 func TestBucketListMaxkeysInvalid(t *testing.T) {
 
 	/* 
@@ -218,9 +216,14 @@ func TestBucketListMaxkeysInvalid(t *testing.T) {
 	err = CreateObjects(bucket, objects)
 	assert.NotNil(err)
 
+<<<<<<< HEAD
 	resp, err := GetObjects(bucket)
 	resp.SetMaxKeys(maxkeys)
 	assert.NotNil(err)
+=======
+	_, _, err = GetKeysWithMaxKeys(bucket, maxkeys)
+	assert.Nil(err)
+>>>>>>> 3994e7769cc9482521b5e816ce20f7712fd9917f
 
 	if err != nil {
 		if awsErr, ok := err.(awserr.Error); ok {
@@ -351,7 +354,11 @@ func TestBucketListMaxkeysOne(t *testing.T) {
 	
 }
 
+<<<<<<< HEAD
 //...................................tests for ListObjects with delimeter and prefix..........................................
+=======
+
+>>>>>>> 3994e7769cc9482521b5e816ce20f7712fd9917f
 func TestObjectListPrefixDelimiterPrefixDelimiterNotExist(t *testing.T) {
 
 	/* 
