@@ -1557,6 +1557,3 @@ func TestRangedRequestEmptyObject(t *testing.T) {
 	err = DeleteObjects(bucket)
 	err = DeleteBucket(bucket)
 }
-
-
-

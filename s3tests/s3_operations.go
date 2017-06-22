@@ -375,3 +375,42 @@ func GeneratePresignedUrlGetObject(bucket string, key string) (string, error) {
 	return urlStr, err
 }
 
+func SetBucketLifecycle(bucket string, id string, status string, days int64) (*s3.PutBucketLifecycleConfigurationOutput, error) {
+
+	input := &s3.PutBucketLifecycleConfigurationInput{
+		Bucket: aws.String(bucket),
+		LifecycleConfiguration: &s3.BucketLifecycleConfiguration{
+			Rules: []*s3.LifecycleRule{
+				{
+					ID:     aws.String(id),
+					Status: aws.String(status),
+					Transitions: []*s3.Transition{
+						{
+							Days:         aws.Int64(days),
+							StorageClass: aws.String("GLACIER"),
+						},
+					},
+				},
+			},
+		},
+	}
+
+	result, err := svc.PutBucketLifecycleConfiguration(input)
+
+	return result, err
+	
+}
+
+func GetBucketLifecycle(bucket string) (*s3.GetBucketLifecycleConfigurationOutput, error) {
+
+	input := &s3.GetBucketLifecycleConfigurationInput{
+		Bucket: aws.String("examplebucket"),
+	}
+
+	result, err := svc.GetBucketLifecycleConfiguration(input)
+
+	return result, err
+	
+}
+
+
