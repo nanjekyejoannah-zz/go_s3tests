@@ -74,4 +74,4 @@ You need to set your GoPath .Details on setting up Ho environments can be found 
 ### To run the tests
 	
 	cd s3tests
-	go test        			 # to run all tests
+	go test -v     			 	# to run all tests
