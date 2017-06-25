@@ -1,4 +1,4 @@
-package s3tests
+package s3_test
 
 import (
 	assert "github.com/stretchr/testify/require"
@@ -7,6 +7,8 @@ import (
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/awstesting/unit"
 	"github.com/aws/aws-sdk-go/service/s3"
+
+	."github.com/nanjekyejoannah/go_s3tests"
 )
 
 //.............SSE tests.............................................................
