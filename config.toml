@@ -7,7 +7,7 @@ is_secure = "yes"
 
 [fixtures]
 
-bucket_prefix = "jnans"
+bucket_prefix = "joannah"
 
 [s3main]
 
