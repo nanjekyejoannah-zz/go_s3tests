@@ -1,15 +1,13 @@
 package s3test
 
 import (
-	assert "github.com/stretchr/testify/require"
 	"testing"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/awstesting/unit"
 	"github.com/aws/aws-sdk-go/service/s3"
+	"github.com/stretchr/testify/assert"
 )
-
-//.............SSE tests.............................................................
 
 func TestComputeSSEKeys(t *testing.T) {
 	s := s3.New(unit.Session)
