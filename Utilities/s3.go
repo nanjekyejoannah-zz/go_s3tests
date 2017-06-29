@@ -14,6 +14,7 @@ import (
 	"io"
 	"strings"
 	"time"
+	"os"
 )
 
 func LoadConfig() error {
@@ -45,33 +46,12 @@ var svc = s3.New(sess, cfg)
 var uploader = s3manager.NewUploader(sess)
 var downloader = s3manager.NewDownloader(sess)
 
-func SliceContains(s []string, e string) bool {
-	resp := false
+func GetConn() (*s3.S3) {
 
-	for _, a := range s {
-		if a == e {
-			resp = true
-			break
-		} else {
-			resp = false
-			break
-		}
-	}
-
-	return resp
+	return svc	
 }
 
-func Contains(slice []string, item string) bool {
-    set := make(map[string]struct{}, len(slice))
-    for _, s := range slice {
-        set[s] = struct{}{}
-    }
-
-    _, ok := set[item] 
-    return ok
-}
-
-func CreateBucket(bucket string) error {
+func CreateBucket(svc *s3.S3, bucket string) error {
 
 	_, err := svc.CreateBucket(&s3.CreateBucketInput{
 		Bucket: aws.String(bucket),
@@ -80,7 +60,7 @@ func CreateBucket(bucket string) error {
 	return err
 }
 
-func PutObjectToBucket(bucket string, key string, content string) error { //deprecated
+func PutObjectToBucket(svc *s3.S3, bucket string, key string, content string) error { //deprecated
 
 	_, err := svc.PutObject(&s3.PutObjectInput{
 		Body:   strings.NewReader(content),
@@ -91,7 +71,7 @@ func PutObjectToBucket(bucket string, key string, content string) error { //depr
 	return err
 }
 
-func CreateObjects(bucket string, objects map[string]string) error { // for this
+func CreateObjects(svc *s3.S3, bucket string, objects map[string]string) error { // for this
 
 	for key, content := range objects {
 
@@ -107,7 +87,7 @@ func CreateObjects(bucket string, objects map[string]string) error { // for this
 	return err
 }
 
-func DeleteBucket(bucket string) error {
+func DeleteBucket(svc *s3.S3, bucket string) error {
 
 	_, err := svc.DeleteBucket(&s3.DeleteBucketInput{
 		Bucket: aws.String(bucket),
@@ -116,7 +96,7 @@ func DeleteBucket(bucket string) error {
 	return err
 }
 
-func ListBuckets() ([]string, error) {
+func ListBuckets(svc *s3.S3) ([]string, error) {
 
 	var bukts []string
 
@@ -128,7 +108,7 @@ func ListBuckets() ([]string, error) {
 	return bukts, err
 }
 
-func ListObjects(bucket string) ([]*s3.Object, error) {
+func ListObjects(svc *s3.S3, bucket string) ([]*s3.Object, error) {
 
 	resp, err := svc.ListObjects(&s3.ListObjectsInput{
 		Bucket: aws.String(bucket),
@@ -137,7 +117,7 @@ func ListObjects(bucket string) ([]*s3.Object, error) {
 	return resp.Contents, err
 }
 
-func GetObjects(bucket string) (*s3.ListObjectsOutput, error) {
+func GetObjects(svc *s3.S3, bucket string) (*s3.ListObjectsOutput, error) {
 
 	resp, err := svc.ListObjects(&s3.ListObjectsInput{
 		Bucket: aws.String(bucket),
@@ -146,7 +126,7 @@ func GetObjects(bucket string) (*s3.ListObjectsOutput, error) {
 	return resp, err
 }
 
-func ListObjectsWithDelimeterAndPrefix(bucket string, prefix string, delimiter string) (*s3.ListObjectsOutput, []string, []string, error) {
+func ListObjectsWithDelimeterAndPrefix(svc *s3.S3, bucket string, prefix string, delimiter string) (*s3.ListObjectsOutput, []string, []string, error) {
 
 	keys := []string {}
 	prefixes := []string {}
@@ -168,7 +148,7 @@ func ListObjectsWithDelimeterAndPrefix(bucket string, prefix string, delimiter s
 	return resp, keys, prefixes, err
 }
 
-func ListObjectsWithPrefix(bucket string, prefix string) (*s3.ListObjectsOutput, []string, []string, error) {
+func ListObjectsWithPrefix(svc *s3.S3, bucket string, prefix string) (*s3.ListObjectsOutput, []string, []string, error) {
 
 	keys := []string {}
 	prefixes := []string {}
@@ -189,7 +169,7 @@ func ListObjectsWithPrefix(bucket string, prefix string) (*s3.ListObjectsOutput,
 	return resp, keys, prefixes, err
 }
 
-func ListObjectsWithDelimiter(bucket string, delimiter string) (*s3.ListObjectsOutput, []string, []string, error) {
+func ListObjectsWithDelimiter(svc *s3.S3, bucket string, delimiter string) (*s3.ListObjectsOutput, []string, []string, error) {
 
 	keys := []string {}
 	prefixes := []string {}
@@ -211,7 +191,7 @@ func ListObjectsWithDelimiter(bucket string, delimiter string) (*s3.ListObjectsO
 }
 
 
-func GetObject(bucket string, key string) (string, error) {
+func GetObject(svc *s3.S3, bucket string, key string) (string, error) {
 
 	results, err := svc.GetObject(&s3.GetObjectInput{Bucket: aws.String(bucket), Key: aws.String(key)})
 
@@ -237,7 +217,7 @@ func GetObject(bucket string, key string) (string, error) {
 	return resp, errr
 }
 
-func GetObjectWithRange(bucket string, key string, range_value string) (*s3.GetObjectOutput, string, error) {
+func GetObjectWithRange(svc *s3.S3, bucket string, key string, range_value string) (*s3.GetObjectOutput, string, error) {
 
 	results, err := svc.GetObject(&s3.GetObjectInput{Bucket: aws.String(bucket), 
 					Key: aws.String(key), Range: aws.String(range_value) })
@@ -265,7 +245,7 @@ func GetObjectWithRange(bucket string, key string, range_value string) (*s3.GetO
 	return resp, data, errr
 }
 
-func DeleteObject(bucket string, key string) error {
+func DeleteObject(svc *s3.S3, bucket string, key string) error {
 
 	_, err := svc.DeleteObject(&s3.DeleteObjectInput{
 		Bucket: aws.String("Bucketname"),
@@ -275,7 +255,7 @@ func DeleteObject(bucket string, key string) error {
 	return err
 }
 
-func DeleteObjects(bucket string) error {
+func DeleteObjects(svc *s3.S3, bucket string) error {
 
 	resp, err := svc.ListObjects(&s3.ListObjectsInput{Bucket: aws.String(bucket)})
 
@@ -293,7 +273,7 @@ func DeleteObjects(bucket string) error {
 	return err
 }
 
-func GetKeys(bucket string) (*s3.ListObjectsOutput, []string, error) {
+func GetKeys(svc *s3.S3, bucket string) (*s3.ListObjectsOutput, []string, error) {
 	var keys []string
 
 	resp, err := svc.ListObjects(&s3.ListObjectsInput{
@@ -307,7 +287,7 @@ func GetKeys(bucket string) (*s3.ListObjectsOutput, []string, error) {
 	return resp, keys, err
 }
 
-func GetKeysWithMaxKeys(bucket string, maxkeys int64) (*s3.ListObjectsOutput, []string, error) {
+func GetKeysWithMaxKeys(svc *s3.S3, bucket string, maxkeys int64) (*s3.ListObjectsOutput, []string, error) {
 	var keys []string
 
 	resp, err := svc.ListObjects(&s3.ListObjectsInput{
@@ -322,7 +302,7 @@ func GetKeysWithMaxKeys(bucket string, maxkeys int64) (*s3.ListObjectsOutput, []
 	return resp, keys, err
 }
 
-func GetKeysWithMarker(bucket string, marker string) (*s3.ListObjectsOutput, []string, error) {
+func GetKeysWithMarker(svc *s3.S3, bucket string, marker string) (*s3.ListObjectsOutput, []string, error) {
 	var keys []string
 
 	resp, err := svc.ListObjects(&s3.ListObjectsInput{
@@ -337,7 +317,7 @@ func GetKeysWithMarker(bucket string, marker string) (*s3.ListObjectsOutput, []s
 	return resp, keys, err
 }
 
-func GetKeysWithMaxKeysAndMarker(bucket string, maxkeys int64, marker string) ([]string, error) {
+func GetKeysWithMaxKeysAndMarker(svc *s3.S3, bucket string, maxkeys int64, marker string) ([]string, error) {
 
 	var keys []string
 
@@ -354,7 +334,7 @@ func GetKeysWithMaxKeysAndMarker(bucket string, maxkeys int64, marker string) ([
 	return keys, err
 }
 
-func CopyObject(other string, source string, item string) error {
+func CopyObject(svc *s3.S3, other string, source string, item string) error {
 
 	_, err := svc.CopyObject(&s3.CopyObjectInput{
 		Bucket:     aws.String(other),
@@ -364,7 +344,7 @@ func CopyObject(other string, source string, item string) error {
 	return err
 }
 
-func GeneratePresignedUrlGetObject(bucket string, key string) (string, error) {
+func GeneratePresignedUrlGetObject(svc *s3.S3, bucket string, key string) (string, error) {
 
 	req, _ := svc.GetObjectRequest(&s3.GetObjectInput{
 		Bucket: aws.String(bucket),
@@ -376,7 +356,7 @@ func GeneratePresignedUrlGetObject(bucket string, key string) (string, error) {
 	return urlStr, err
 }
 
-func SetBucketLifecycle(bucket string, id string, status string, days int64) (*s3.PutBucketLifecycleConfigurationOutput, error) {
+func SetBucketLifecycle(svc *s3.S3, bucket string, id string, status string, days int64) (*s3.PutBucketLifecycleConfigurationOutput, error) {
 
 	input := &s3.PutBucketLifecycleConfigurationInput{
 		Bucket: aws.String(bucket),
@@ -402,7 +382,7 @@ func SetBucketLifecycle(bucket string, id string, status string, days int64) (*s
 	
 }
 
-func GetBucketLifecycle(bucket string) (*s3.GetBucketLifecycleConfigurationOutput, error) {
+func GetBucketLifecycle(svc *s3.S3, bucket string) (*s3.GetBucketLifecycleConfigurationOutput, error) {
 
 	input := &s3.GetBucketLifecycleConfigurationInput{
 		Bucket: aws.String("examplebucket"),
@@ -415,3 +395,195 @@ func GetBucketLifecycle(bucket string) (*s3.GetBucketLifecycleConfigurationOutpu
 }
 
 
+func DeletePrefixedBuckets(svc *s3.S3){
+
+  buckets, err := svc.ListBuckets(&s3.ListBucketsInput{})
+
+  if err != nil {
+    panic(fmt.Sprintf("failed to list buckets, %v", err))
+  }
+
+  for _, b := range buckets.Buckets {
+    bucket := aws.StringValue(b.Name)
+
+    if !strings.HasPrefix(bucket, prefix) {
+      continue
+    }
+    
+    if err := DeleteObjects(svc, bucket); err != nil {
+      fmt.Fprintf(os.Stderr, "failed to delete objects %q, %v", bucket, err)
+    }
+
+    if err := DeleteBucket(svc, bucket); err != nil {
+      fmt.Fprintf(os.Stderr, "failed to delete bucket %q, %v", bucket, err)
+    }
+  }
+
+
+}
+
+func EncryptionSSECustomerWrite (svc *s3.S3, filesize int) (string, string, error) {
+
+	data :=  strings.Repeat("A", filesize)
+	key := "testobj"
+	bucket := GetBucketName()
+	sse := []string{"AES256", "pO3upElrwuEXSoFwCfnZPdSsmt/xWeFa0N9KgDijwVs=","DWygnHRtgiJ77HCm+1rvHw=="}
+
+	err := CreateBucket(svc, bucket)
+
+	err = WriteSSECEcrypted(svc, bucket, key, data, sse)
+
+	rdata, _ := ReadSSECEcrypted(svc, bucket, key, sse)
+
+	return rdata, data, err
+}
+
+func SSEKMSkeyIdCustomerWrite(svc *s3.S3, filesize int) (string, string, error) {
+
+	data :=  strings.Repeat("A", filesize)
+	key := "testobj"
+	bucket := GetBucketName()
+	sse := []string{"AES256"}
+	kmskeyid := viper.GetString("s3main.region")
+
+	err := CreateBucket(svc, bucket)
+
+	err = WriteSSEKMSkeyId(svc, bucket, key, data, sse, kmskeyid)
+
+	rdata, _ := ReadSSEKMS(svc, bucket, key, sse)
+
+	return rdata, data, err
+}
+
+func SSEKMSCustomerWrite(svc *s3.S3, filesize int) (string, string, error) {
+
+	data :=  strings.Repeat("A", filesize)
+	key := "testobj"
+	bucket := GetBucketName()
+	sse := []string{"AES256"}
+
+	err := CreateBucket(svc, bucket)
+
+	err = WriteSSEKMS(svc, bucket, key, data, sse)
+
+	rdata, _ := ReadSSEKMS(svc, bucket, key, sse)
+
+	return rdata, data, err
+}
+
+
+func WriteSSECEcrypted(svc *s3.S3, bucket string, key string, content string, sse []string) error { //deprecated
+
+	_, err := svc.PutObject(&s3.PutObjectInput{
+		Body:   strings.NewReader(content),
+		Bucket: &bucket,
+		Key:    &key,
+		//SSECustomerAlgorithm: &sse[0],
+		//SSECustomerKey: &sse[1],
+		SSECustomerKeyMD5: &sse[2],
+	})
+
+	return err
+}
+
+func ReadSSECEcrypted(svc *s3.S3, bucket string, key string, sse []string) (string, error) {
+
+	results, err := svc.GetObject(&s3.GetObjectInput{
+		Bucket: aws.String(bucket), 
+		Key: aws.String(key), 
+		SSECustomerAlgorithm: &sse[0],
+		//SSECustomerKey: &sse[1],
+		SSECustomerKeyMD5: &sse[2],
+	})
+
+	var resp string
+	var errr error
+
+	if err == nil {
+
+		buf := bytes.NewBuffer(nil)
+		if _, err := io.Copy(buf, results.Body); err != nil {
+			return "", err
+		}
+
+		byteArray := buf.Bytes()
+
+		resp, errr = string(byteArray[:]), err
+
+	} else {
+
+		resp, errr = "", err
+	}
+
+	return resp, errr
+}
+
+func WriteSSEKMS(svc *s3.S3, bucket string, key string, content string, sse []string) error { //deprecated
+
+	_, err := svc.PutObject(&s3.PutObjectInput{
+		Body:   strings.NewReader(content),
+		Bucket: &bucket,
+		Key:    &key,
+		SSECustomerKeyMD5: &sse[0],
+	})
+
+	return err
+}
+
+func WriteSSEKMSkeyId(svc *s3.S3, bucket string, key string, content string, sse []string, kmskeyid string) error { //deprecated
+
+	_, err := svc.PutObject(&s3.PutObjectInput{
+		Body:   strings.NewReader(content),
+		Bucket: &bucket,
+		Key:    &key,
+		SSECustomerKeyMD5: &sse[0],
+		SSEKMSKeyId: &kmskeyid,
+	})
+
+	return err
+}
+
+func ReadSSEKMS(svc *s3.S3, bucket string, key string, sse []string) (string, error) {
+
+	results, err := svc.GetObject(&s3.GetObjectInput{
+		Bucket: aws.String(bucket), 
+		Key: aws.String(key), 
+		SSECustomerKeyMD5: &sse[0],
+	})
+
+	var resp string
+	var errr error
+
+	if err == nil {
+
+		buf := bytes.NewBuffer(nil)
+		if _, err := io.Copy(buf, results.Body); err != nil {
+			return "", err
+		}
+
+		byteArray := buf.Bytes()
+
+		resp, errr = string(byteArray[:]), err
+
+	} else {
+
+		resp, errr = "", err
+	}
+
+	return resp, errr
+}
+
+func GetSetMetadata (metadata map[string]*string) map[string]*string {
+
+	bucket := GetBucketName()
+	objects := map[string]string{ "key1": "echo",}
+	key := objects["key1"]
+
+	_ = CreateBucket(svc, bucket)
+	_ = CreateObjects(svc, bucket, objects)
+
+	resp, _ := svc.GetObject(&s3.GetObjectInput{Bucket: aws.String(bucket), Key: aws.String(key)})
+	resp.SetMetadata(metadata)
+
+	return resp.Metadata
+}

@@ -1216,6 +1216,22 @@ func (suite *S3Suite) TestObjectCopyKeyNotFound() {
 
 }
 
+// func (suite *S3Suite) TestObjectHeadZeroBytes1() {
+
+// 	assert := suite
+// 	bucket := GetBucketName()
+// 	objects := map[string]string{ "bar": "echo",}
+
+// 	err := CreateBucket(svc, bucket)
+// 	err = CreateObjects(svc, bucket, objects)
+// 	assert.Nil(err)
+
+// 	resp, err := GetObjects(svc, bucket)
+// 	assert.Nil(err)
+// 	assert.Equal(objects[0], string(resp.Body))
+// 	assert.Equal(0, resp.ContentLength)
+// }
+
 //.....................................Test Getting Ranged Objects....................................................................................................................
 
 func (suite *S3Suite) TestRangedRequest() {
@@ -1335,11 +1351,67 @@ func (suite *S3Suite) TestRangedRequestEmptyObject() {
 	}
 }
 
+func (suite *S3Suite) TestObjectHeadZeroBytes() {
+
+	assert := suite
+	bucket := GetBucketName()
+	objects := map[string]string{ "bar": "",}
+
+	err := CreateBucket(svc, bucket)
+	err = CreateObjects(svc, bucket, objects)
+	assert.Nil(err)
+
+	resp, err := GetObject(svc, bucket, "bar")
+	assert.Nil(err)
+	assert.Equal(0, len(resp))
+}
+
+func (suite *S3Suite) TestObjectSetGetMetadataNoneToGood() {
+
+	assert := suite
+	metadata := map[string]*string{ "mymeta": nil,}
+	got := GetSetMetadata(metadata)
+	assert.Equal(got, metadata)
+}
+
+func (suite *S3Suite) TestObjectSetGetMetadataNoneToEmpty() {
+
+	assert := suite
+	metadata := map[string]*string{ "": nil,}
+	got := GetSetMetadata(metadata)
+	assert.Equal(got, metadata)
+}
+
+func (suite *S3Suite) TestObjectSetGetMetadataOverwriteToGood() {
+
+	assert := suite
+
+	oldmetadata := map[string]*string{ "meta1": nil,}
+	got := GetSetMetadata(oldmetadata)
+	assert.Equal(got, oldmetadata)
+
+	newmetadata := map[string]*string{ "meta2": nil,}
+	got = GetSetMetadata(newmetadata)
+	assert.Equal(got, newmetadata)
+}
+
+func (suite *S3Suite) TestObjectSetGetMetadataOverwriteToEmpty() {
+
+	assert := suite
+
+	oldmetadata := map[string]*string{ "meta1": nil,}
+	got := GetSetMetadata(oldmetadata)
+	assert.Equal(got, oldmetadata)
+
+	newmetadata := map[string]*string{ "": nil,}
+	got = GetSetMetadata(newmetadata)
+	assert.Equal(got, newmetadata)
+}
 
 func TestSuite(t *testing.T) {
 
     suite.Run(t, new(S3Suite))
-
+    suite.Run(t, new(SSESuite))
 }
 
 func (suite *S3Suite) TearDownTest() {
