@@ -13,8 +13,8 @@ import (
 	"github.com/spf13/viper"
 	"io"
 	"strings"
-	"time"
 	"os"
+	"time"
 )
 
 func LoadConfig() error {
@@ -586,4 +586,90 @@ func GetSetMetadata (metadata map[string]*string) map[string]*string {
 	resp.SetMetadata(metadata)
 
 	return resp.Metadata
+}
+
+func GetObjectWithIfMatch(svc *s3.S3, bucket string, key string, condition string) (string, error) {
+
+	results, err := svc.GetObject(&s3.GetObjectInput{Bucket: aws.String(bucket), Key: aws.String(key), IfMatch: aws.String(condition)})
+
+	var resp string
+	var errr error
+
+	if err == nil {
+
+		buf := bytes.NewBuffer(nil)
+		if _, err := io.Copy(buf, results.Body); err != nil {
+			return "", err
+		}
+
+		byteArray := buf.Bytes()
+
+		resp, errr = string(byteArray[:]), err
+
+	} else {
+
+		resp, errr = "", err
+	}
+
+	return resp, errr
+}
+
+func GetObjectWithIfNoneMatch(svc *s3.S3, bucket string, key string, condition string) (string, error) {
+
+	results, err := svc.GetObject(&s3.GetObjectInput{Bucket: aws.String(bucket), Key: aws.String(key), IfNoneMatch: aws.String(condition)})
+
+	var resp string
+	var errr error
+
+	if err == nil {
+
+		buf := bytes.NewBuffer(nil)
+		if _, err := io.Copy(buf, results.Body); err != nil {
+			return "", err
+		}
+
+		byteArray := buf.Bytes()
+
+		resp, errr = string(byteArray[:]), err
+
+	} else {
+
+		resp, errr = "", err
+	}
+
+	return resp, errr
+}
+
+func GetObjectWithIfModifiedSince(svc *s3.S3, bucket string, key string, time time.Time) (string, error) {
+
+	results, err := svc.GetObject(&s3.GetObjectInput{Bucket: aws.String(bucket), Key: aws.String(key), IfModifiedSince: time})
+
+	var resp string
+	var errr error
+
+	if err == nil {
+
+		buf := bytes.NewBuffer(nil)
+		if _, err := io.Copy(buf, results.Body); err != nil {
+			return "", err
+		}
+
+		byteArray := buf.Bytes()
+
+		resp, errr = string(byteArray[:]), err
+
+	} else {
+
+		resp, errr = "", err
+	}
+
+	return resp, errr
+}
+
+
+func GetObj(svc *s3.S3, bucket string, key string) (*s3.GetObjectOutput, error) {
+
+	results, err := svc.GetObject(&s3.GetObjectInput{Bucket: aws.String(bucket), Key: aws.String(key)})
+
+	return results, err
 }

@@ -2,159 +2,10 @@ package s3test
 
 import (
 
-	"github.com/stretchr/testify/suite"
-	"testing"
-
 	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/aws/aws-sdk-go/service/s3"
 	 . "../Utilities"
 )
-
-var svc = GetConn()
-
-type S3Suite struct {
-    suite.Suite
-}
-
-func (suite *S3Suite) SetupTest() {
-    
-}
-
-func (suite *S3Suite) TestBucketCreateReadDelete () {
-
-	/* 
-		Resource : bucket, method: create/delete
-		Scenario : create and delete bucket. 
-		Assertion: bucket exists after create and is gone after delete.
-	*/
-
-	assert := suite
-	bucket := GetBucketName()
-
-	err := CreateBucket(svc, bucket)
-	assert.Nil(err)
-
-	bkts, err := ListBuckets(svc)
-	assert.Equal(true, Contains(bkts, bucket))
-
-	
-	err = DeleteBucket(svc, bucket)
-
-	//ensure it doesnt exist
-	err = DeleteBucket(svc, bucket)
-	assert.NotNil(err)
-
-	if err != nil {
-		if awsErr, ok := err.(awserr.Error); ok {
-
-			assert.Equal(awsErr.Code(), "NoSuchBucket")
-			assert.Equal(awsErr.Message(), "")
-		}
-	}
-}
-
-func (suite *S3Suite) TestBucketDeleteNotExist() {
-
-	/* 
-		Resource : bucket, method: delete
-		Scenario : non existant bucket 
-		Assertion: fails NoSuchBucket.
-	*/
-
-	assert := suite
-	bucket := GetBucketName()
-
-	err := DeleteBucket(svc, bucket)
-	assert.NotNil(err)
-
-	if err != nil {
-		if awsErr, ok := err.(awserr.Error); ok {
-
-			assert.Equal(awsErr.Code(), "NoSuchBucket")
-			assert.Equal(awsErr.Message(), "")
-		}
-	}
-
-}
-
-func (suite *S3Suite) TestBucketDeleteNotEmpty() {
-
-	/* 
-		Resource : bucket, method: delete
-		Scenario : bucket not empty 
-		Assertion: fails BucketNotEmpty.
-	*/
-
-	assert := suite
-	bucket := GetBucketName()
-	objects := map[string]string{ "key1": "echo",}
-
-	err := CreateBucket(svc, bucket)
-	assert.Nil(err)
-
-	err = CreateObjects(svc, bucket, objects)
-
-	err = DeleteBucket(svc, bucket)
-	assert.NotNil(err)
-
-	if err != nil {
-		if awsErr, ok := err.(awserr.Error); ok {
-
-			assert.Equal(awsErr.Code(), "BucketNotEmpty")
-			assert.Equal(awsErr.Message(), "")
-		}
-	}
-
-}
-
-func (suite *S3Suite) TestBucketListEmpty() {
-
-	/* 
-		Resource : object, method: list
-		Scenario : bucket not empty 
-		Assertion: empty buckets return no contents.
-	*/
-
-	assert := suite
-	bucket := GetBucketName()
-	var empty_list []*s3.Object
-
-	err := CreateBucket(svc, bucket)
-	assert.Nil(err)
-
-	resp, err := GetObjects(svc, bucket) 
-	assert.Nil(err)
-	assert.Equal(empty_list, resp.Contents)
-}
-
-func  (suite *S3Suite) TestBucketListDistinct() {
-
-	/* 
-		Resource : object, method: list
-		Scenario : bucket not empty 
-		Assertion: distinct buckets have different contents.
-	*/
-
-	assert := suite
-	bucket1 := GetBucketName()
-	bucket2 := GetBucketName()
-	objects1 := map[string]string{ "key1": "Hello",}
-	objects2 := map[string]string{ "key2": "Manze",}
-
-	err := CreateBucket(svc, bucket1)
-	err = CreateBucket(svc, bucket2)
-	assert.Nil(err)
-
-	err = CreateObjects(svc, bucket1, objects1)
-	err = CreateObjects(svc, bucket2, objects2)
-
-	obj1, _ := GetObject(svc, bucket1, "key1")
-	obj2, _ := GetObject(svc, bucket2, "key2")
-
-	assert.Equal(obj1, "Hello")
-	assert.Equal(obj2, "Manze")
-
-}
 
 func (suite *S3Suite) TestObjectListMany() {
 
@@ -189,10 +40,10 @@ func (suite *S3Suite) TestObjectListMany() {
 
 }
 
-func (suite *S3Suite) TestBucketListMaxkeysNone() {
+func (suite *S3Suite) TestObjectListMaxkeysNone() {
 
 	/* 
-		Resource : Bucket, Method: get
+		Resource : Object, Method: list
 		Operation : List all keys
 		Assertion : pagination w/o max_keys.
 	*/
@@ -218,10 +69,10 @@ func (suite *S3Suite) TestBucketListMaxkeysNone() {
 	assert.Equal(*resp.IsTruncated, false)
 }
 
-func (suite *S3Suite) TestBucketListMaxkeysZero() {
+func (suite *S3Suite) TestObjectListMaxkeysZero() {
 
 	/* 
-		Resource : bucket, method: get
+		Resource : object, method: get
 		Operation : List all keys .
 		Assertion: pagination w/max_keys=0.
 	*/
@@ -243,7 +94,7 @@ func (suite *S3Suite) TestBucketListMaxkeysZero() {
 	assert.Equal(*resp.IsTruncated, false)
 }
 
-func (suite *S3Suite) TestBucketListMaxkeysOne() {
+func (suite *S3Suite) TestObjectListMaxkeysOne() {
 
 	/* 
 		Resource : bucket, method: get
@@ -856,7 +707,7 @@ func (suite *S3Suite) TestObjectListDelimiterBasic() {
 
 //............................................Test Get object with marker...................................
 
-func (suite *S3Suite) TestBucketListMarkerBeforeList() {
+func (suite *S3Suite) TestObjectListMarkerBeforeList() {
 
 	/* 
 		Resource : object, method: get
@@ -887,7 +738,7 @@ func (suite *S3Suite) TestBucketListMarkerBeforeList() {
 	
 }
 
-func (suite *S3Suite) TestBucketListMarkerAfterList() {
+func (suite *S3Suite) TestObjectListMarkerAfterList() {
 
 	/* 
 		Resource : object, method: get
@@ -1216,22 +1067,6 @@ func (suite *S3Suite) TestObjectCopyKeyNotFound() {
 
 }
 
-// func (suite *S3Suite) TestObjectHeadZeroBytes1() {
-
-// 	assert := suite
-// 	bucket := GetBucketName()
-// 	objects := map[string]string{ "bar": "echo",}
-
-// 	err := CreateBucket(svc, bucket)
-// 	err = CreateObjects(svc, bucket, objects)
-// 	assert.Nil(err)
-
-// 	resp, err := GetObjects(svc, bucket)
-// 	assert.Nil(err)
-// 	assert.Equal(objects[0], string(resp.Body))
-// 	assert.Equal(0, resp.ContentLength)
-// }
-
 //.....................................Test Getting Ranged Objects....................................................................................................................
 
 func (suite *S3Suite) TestRangedRequest() {
@@ -1408,13 +1243,313 @@ func (suite *S3Suite) TestObjectSetGetMetadataOverwriteToEmpty() {
 	assert.Equal(got, newmetadata)
 }
 
-func TestSuite(t *testing.T) {
+//..............................................SSE-C encrypted transfer....................................................
 
-    suite.Run(t, new(S3Suite))
-    suite.Run(t, new(SSESuite))
+func (suite *S3Suite) TestEncryptedTransfer1B() {
+
+	/* 
+		Resource : object, method: put
+		Scenario : Test SSE-C encrypted transfer 1byte
+		Assertion: success.
+	*/
+	assert := suite
+
+	rdata, data, err := EncryptionSSECustomerWrite(svc, 1)
+	assert.Nil(err)
+	assert.Equal(rdata, data)
 }
 
-func (suite *S3Suite) TearDownTest() {
-	
-	DeletePrefixedBuckets(svc)  
+func (suite *S3Suite) TestEncryptedTransfer1KB() {
+
+	/* 
+		Resource : object, method: put
+		Scenario : Test SSE-C encrypted transfer 1KB
+		Assertion: success.
+	*/
+	assert := suite
+
+	rdata, data, err := EncryptionSSECustomerWrite(svc, 1024)
+	assert.Nil(err)
+	assert.Equal(rdata, data)
 }
+
+func (suite *S3Suite) TestEncryptedTransfer1MB() {
+
+	/* 
+		Resource : object, method: put
+		Scenario : Test SSE-C encrypted transfer 1MB
+		Assertion: success.
+	*/
+	assert := suite
+
+	rdata, data, err := EncryptionSSECustomerWrite(svc, 1024*1024)
+	assert.Nil(err)
+	assert.Equal(rdata, data)
+}
+
+func (suite *S3Suite) TestEncryptedTransfer13B() {
+
+	/* 
+		Resource : object, method: put
+		Scenario : Test SSE-C encrypted transfer 13 bytes
+		Assertion: success.
+	*/
+	assert := suite
+
+	rdata, data, err := EncryptionSSECustomerWrite(svc, 13)
+	assert.Nil(err)
+	assert.Equal(rdata, data)
+}
+
+//.................................SSE and KMS......................................................................
+
+func (suite *S3Suite) TestSSEKMSbarbTransfer13B() {
+
+	/* 
+		Resource : object, method: put
+		Scenario : Test SSE-C encrypted transfer 13 bytes
+		Assertion: success.
+	*/
+	assert := suite
+
+	rdata, data, err := SSEKMSkeyIdCustomerWrite(svc, 13)
+	assert.Nil(err)
+	assert.Equal(rdata, data)
+}
+
+func (suite *S3Suite) TestSSEKMSbarbTransfer1MB() {
+
+	/* 
+		Resource : object, method: put
+		Scenario : Test SSE-C encrypted transfer 13 bytes
+		Assertion: success.
+	*/
+	assert := suite
+
+	rdata, data, err := SSEKMSkeyIdCustomerWrite(svc, 1024*1024)
+	assert.Nil(err)
+	assert.Equal(rdata, data)
+}
+
+func (suite *S3Suite) TestSSEKMSbarbTransfer1KB() {
+
+	/* 
+		Resource : object, method: put
+		Scenario : Test SSE-C encrypted transfer 13 bytes
+		Assertion: success.
+	*/
+	assert := suite
+
+	rdata, data, err := SSEKMSkeyIdCustomerWrite(svc, 1024)
+	assert.Nil(err)
+	assert.Equal(rdata, data)
+}
+
+func (suite *S3Suite) TestSSEKMSbarbTransfer1B() {
+
+	/* 
+		Resource : object, method: put
+		Scenario : Test SSE-C encrypted transfer 13 bytes
+		Assertion: success.
+	*/
+	assert := suite
+
+	rdata, data, err := SSEKMSkeyIdCustomerWrite(svc, 1)
+	assert.Nil(err)
+	assert.Equal(rdata, data)
+}
+
+func (suite *S3Suite) TestSSEKMSTransfer13B() {
+
+	/* 
+		Resource : object, method: put
+		Scenario : Test SSE-KMS encrypted transfer 13 bytes
+		Assertion: success.
+	*/
+	assert := suite
+
+	rdata, data, err := SSEKMSkeyIdCustomerWrite(svc, 13)
+	assert.Nil(err)
+	assert.Equal(rdata, data)
+}
+
+func (suite *S3Suite) TestSSEKMSTransfer1MB() {
+
+	/* 
+		Resource : object, method: put
+		Scenario : Test SSE-KMS encrypted transfer 1 mega byte
+		Assertion: success.
+	*/
+	assert := suite
+
+	rdata, data, err := SSEKMSCustomerWrite(svc, 1024*1024)
+	assert.Nil(err)
+	assert.Equal(rdata, data)
+}
+
+func (suite *S3Suite) TestSSEKMSTransfer1KB() {
+
+	/* 
+		Resource : object, method: put
+		Scenario : Test SSE-KMS encrypted transfer 1 kilobyte
+		Assertion: success.
+	*/
+	assert := suite
+
+	rdata, data, err := SSEKMSCustomerWrite(svc, 1024)
+	assert.Nil(err)
+	assert.Equal(rdata, data)
+}
+
+func (suite *S3Suite) TestSSEKMSTransfer1B() {
+
+	/* 
+		Resource : object, method: put
+		Scenario : Test SSE-KMS encrypted transfer 1 byte
+		Assertion: success.
+	*/
+	assert := suite
+
+	rdata, data, err := SSEKMSCustomerWrite(svc, 1)
+	assert.Nil(err)
+	assert.Equal(rdata, data)
+}
+
+func (suite *S3Suite) TestSSEKMSPresent() {
+
+	/* 
+		Resource : object, method: put
+		Scenario : write encrypted with SSE-KMS and read without SSE-KMS
+		Assertion: success.
+	*/
+	assert := suite
+	bucket := GetBucketName()
+
+	err := CreateBucket(svc, bucket)
+
+	err = WriteSSEKMSkeyId(svc, bucket, "kay1", "test", []string{"AES256"}, "barbican_key_id")
+	data, err := GetObject(svc, bucket, "kay1")
+	assert.Nil(err)
+	assert.Equal("test", data)
+}
+
+//...................................... get object with conditions....................
+
+func (suite *S3Suite) TestGetObjectIfmatchGood(){
+
+	/* 
+		Resource : object, method: get
+		Scenario : get w/ If-Match: the latest ETag 
+		Assertion: suceeds.
+	*/
+
+	assert := suite
+	bucket := GetBucketName()
+	objects := map[string]string{ "foo": "bar",}
+
+	err := CreateBucket(svc, bucket)
+	err = CreateObjects(svc, bucket, objects)
+	object, err := GetObj(svc, bucket, "foo")
+
+	got, err := GetObjectWithIfMatch(svc, bucket, "foo", *object.ETag)
+	assert.Nil(err)
+	assert.Equal(got, "bar")
+
+}
+
+func (suite *S3Suite) TestGetObjectIfmatchFailed(){
+
+	/* 
+		Resource : object, method: get
+		Scenario : get w/ If-Match: bogus ETag 
+		Assertion: fails.
+	*/
+
+	assert := suite
+	bucket := GetBucketName()
+	objects := map[string]string{ "foo": "bar",}
+
+	err := CreateBucket(svc, bucket)
+	err = CreateObjects(svc, bucket, objects)
+
+	_, err = GetObjectWithIfMatch(svc, bucket, "foo", "ABCORZ")
+	assert.NotNil(err)
+	if err != nil {
+		if awsErr, ok := err.(awserr.Error); ok {
+
+			assert.Equal(awsErr.Code(), "PreconditionFailed")
+			assert.Equal(awsErr.Message(), "")
+		}
+	}
+
+}
+
+func (suite *S3Suite) TestGetObjectIfNoneMatchGood(){
+
+	/* 
+		Resource : object, method: get
+		Scenario : get w/ If-None-Match: the latest ETag
+		Assertion: fails.
+	*/
+
+	assert := suite
+	bucket := GetBucketName()
+	objects := map[string]string{ "foo": "bar",}
+
+	err := CreateBucket(svc, bucket)
+	err = CreateObjects(svc, bucket, objects)
+	object, err := GetObj(svc, bucket, "foo")
+
+	_, err = GetObjectWithIfNoneMatch(svc, bucket, "foo", *object.ETag)
+	assert.NotNil(err)
+	if err != nil {
+		if awsErr, ok := err.(awserr.Error); ok {
+
+			assert.Equal(awsErr.Code(), "NotModified")
+			assert.Equal(awsErr.Message(), "Not Modified")
+		}
+	}
+
+}
+
+func (suite *S3Suite) TestGetObjectIfNoneMatchFailed(){
+
+	/* 
+		Resource : object, method: get
+		Scenario : get w/ If-None-Match: bogus ETag 
+		Assertion: suceeds.
+	*/
+
+	assert := suite
+	bucket := GetBucketName()
+	objects := map[string]string{ "foo": "bar",}
+
+	err := CreateBucket(svc, bucket)
+	err = CreateObjects(svc, bucket, objects)
+
+	got, err := GetObjectWithIfNoneMatch(svc, bucket, "foo", "ABCORZ")
+	assert.Nil(err)
+	assert.Equal(got, "bar")
+}
+
+func (suite *S3Suite) TestGetObjectIfModifiedSinceGood(){
+
+	/* 
+		Resource : object, method: get
+		Scenario : get w/ If-Modified-Since: before
+		Assertion: suceeds.
+	*/
+
+	assert := suite
+	bucket := GetBucketName()
+	objects := map[string]string{ "foo": "bar",}
+
+	err := CreateBucket(svc, bucket)
+	err = CreateObjects(svc, bucket, objects)
+	object, err := GetObj(svc, bucket, "foo")
+
+	got, err := GetObjectWithIfModifiedSince(svc, bucket, "foo", time.Time("Sat, 29 Oct 1994 19:43:31 GMT"))
+	assert.Nil(err)
+	assert.Equal(got, "bar")
+}
+
