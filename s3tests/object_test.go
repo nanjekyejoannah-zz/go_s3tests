@@ -4,6 +4,7 @@ import (
 
 	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/aws/aws-sdk-go/service/s3"
+	"time"
 	 . "../Utilities"
 )
 
@@ -921,31 +922,7 @@ func (suite *S3Suite) TestObjectReadFromNonExistantBucket() {
 
 }
 
-func (suite *S3Suite) TestObjectWriteToNonExistantBucket() {
 
-	/*
-		Reource object : method: get 
-		Operation : read object
-		Assertion : read contents that were never written
-	*/
-
-	assert := suite
-	non_exixtant_bucket := "bucketz"
-	objects := map[string]string{ "key1": "echo", "key2": "lima", "key3": "golf",}
-
-	err := CreateObjects(svc, non_exixtant_bucket, objects)
-	assert.NotNil(err)
-
-	if err != nil {
-		if awsErr, ok := err.(awserr.Error); ok {
-
-			assert.Equal(awsErr.Code(), "NoSuchBucket")
-			assert.Equal(awsErr.Message(), "")
-		}
-
-	}
-
-}
 
 func (suite *S3Suite) TestObjectWriteReadUpdateReadDelete() {
 
@@ -1543,13 +1520,227 @@ func (suite *S3Suite) TestGetObjectIfModifiedSinceGood(){
 	assert := suite
 	bucket := GetBucketName()
 	objects := map[string]string{ "foo": "bar",}
+	now := time.Now()
 
 	err := CreateBucket(svc, bucket)
 	err = CreateObjects(svc, bucket, objects)
-	object, err := GetObj(svc, bucket, "foo")
+	_, err = GetObj(svc, bucket, "foo")
 
-	got, err := GetObjectWithIfModifiedSince(svc, bucket, "foo", time.Time("Sat, 29 Oct 1994 19:43:31 GMT"))
+	got, err := GetObjectWithIfModifiedSince(svc, bucket, "foo", now)
 	assert.Nil(err)
 	assert.Equal(got, "bar")
 }
+
+func (suite *S3Suite) TestGetObjectIfUnModifiedSinceGood(){
+
+	/* 
+		Resource : object, method: get
+		Scenario : get w/ If-Unmodified-Since: before
+		Assertion: fails.
+	*/
+
+	assert := suite
+	bucket := GetBucketName()
+	objects := map[string]string{ "foo": "bar",}
+	now := time.Now()
+
+	err := CreateBucket(svc, bucket)
+	err = CreateObjects(svc, bucket, objects)
+
+	_, err = GetObjectWithIfUnModifiedSince(svc, bucket, "foo", now)
+	assert.NotNil(err)
+	if err != nil {
+		if awsErr, ok := err.(awserr.Error); ok {
+
+			assert.Equal(awsErr.Code(), "PreconditionFailed")
+			assert.Equal(awsErr.Message(), "")
+		}
+	}
+}
+
+func (suite *S3Suite) TestGetObjectIfUnModifiedSinceFailed(){
+
+	/* 
+		Resource : object, method: get
+		Scenario : get w/ If-Unmodified-Since: after
+		Assertion: suceeds.
+	*/
+
+	assert := suite
+	bucket := GetBucketName()
+	objects := map[string]string{ "foo": "bar",}
+	now := time.Now() 
+	future := now.Add(time.Hour * 24 * 3)
+
+
+	err := CreateBucket(svc, bucket)
+	err = CreateObjects(svc, bucket, objects)
+
+	got, err := GetObjectWithIfUnModifiedSince(svc, bucket, "foo", future)
+	assert.Nil(err)
+	assert.Equal(got, "bar")
+}
+
+//................put object with condition..............................................
+
+func (suite *S3Suite) TestPutObjectIfMatchGood(){
+
+	/* 
+		Resource : object, method: get
+		Scenario : data re-write w/ If-Match: the latest ETag
+		Assertion: replaces previous data.
+	*/
+
+	assert := suite
+	bucket := GetBucketName()
+	objects := map[string]string{ "foo": "bar",}
+
+	err := CreateBucket(svc, bucket)
+	err = CreateObjects(svc, bucket, objects)
+
+	gotData, err := GetObject(svc, bucket, "foo")
+	assert.Equal(gotData, "bar")
+
+	object, err := GetObj(svc, bucket, "foo")
+	err = PutObjectWithIfMatch(svc, bucket, "foo", "zar", *object.ETag)
+	assert.Nil(err)
+
+	new_data, _:= GetObject(svc, bucket, "foo")
+	assert.Nil(err)
+	assert.Equal(new_data, "zar")
+}
+
+func (suite *S3Suite) TestPutObjectIfMatchFailed(){
+
+	/* 
+		Resource : object, method: get
+		Scenario : data re-write w/ If-Match: outdated ETag
+		Assertion: replaces previous data.
+	*/
+
+	assert := suite
+	bucket := GetBucketName()
+	objects := map[string]string{ "key1": "bar",}
+
+	err := CreateBucket(svc, bucket)
+	err = CreateObjects(svc, bucket, objects)
+
+	gotData, err := GetObject(svc, bucket, "key1")
+	assert.Equal(gotData, "bar")
+
+	err = PutObjectWithIfMatch(svc, bucket, "key1", "zar", "ABCORZmmmm")
+
+	oldData, err := GetObject(svc, bucket, "key1")
+	assert.Nil(err)
+	assert.Equal(oldData, "zar")
+}
+
+
+func (suite *S3Suite) TestPutObjectIfmatchNonexistedFailed(){
+
+	/* 
+		Resource : object, method: put
+		Scenario : overwrite non-existing object w/ If-Match: *
+		Assertion: fails
+	*/
+
+	assert := suite
+	bucket := GetBucketName()
+
+	err := CreateBucket(svc, bucket)
+	assert.Nil(err)
+
+	err = PutObjectWithIfMatch(svc, bucket, "foo", "zar", "*")
+	assert.NotNil(err)
+	if err != nil {
+		if awsErr, ok := err.(awserr.Error); ok {
+
+			assert.Equal(awsErr.Code(), "NoSuchKey")
+			assert.Equal(awsErr.Message(), "")
+		}
+	}
+}
+
+func (suite *S3Suite) TestPutObjectIfNonMatchGood(){
+
+	/* 
+		Resource : object, method: get
+		Scenario : overwrite existing object w/ If-None-Match: outdated ETag'
+		Assertion: replaces previous data and metadata.
+	*/
+
+	assert := suite
+	bucket := GetBucketName()
+	objects := map[string]string{ "foo": "bar",}
+
+	err := CreateBucket(svc, bucket)
+	err = CreateObjects(svc, bucket, objects)
+
+	gotData, err := GetObject(svc, bucket, "foo")
+	assert.Equal(gotData, "bar")
+
+	err = PutObjectWithIfNoneMatch(svc, bucket, "foo", "zar", "ABCORZ")
+	assert.Nil(err)
+
+	new_data, _:= GetObject(svc, bucket, "foo")
+	assert.Nil(err)
+	assert.Equal(new_data, "zar")
+}
+
+
+func (suite *S3Suite) TestPutObjectIfNonMatchNonexistedGood(){
+
+	/* 
+		Resource : object, method: get
+		Scenario : overwrite non-existing object w/ If-None-Match: *
+		Assertion: succeeds.
+	*/
+
+	assert := suite
+	bucket := GetBucketName()
+
+	err := CreateBucket(svc, bucket)
+
+	err = PutObjectWithIfNoneMatch(svc, bucket, "key1", "bar", "*")
+	assert.Nil(err)
+
+	data, err := GetObject(svc, bucket, "key1")
+	assert.Equal(data, "bar")
+}
+
+func (suite *S3Suite) TestPutObjectIfNonMatchOverwriteExistedFailed(){
+
+	/* 
+		Resource : object, method: get
+		Scenario : overwrite existing object w/ If-None-Match: *
+		Assertion: fails.
+	*/
+
+	assert := suite
+	bucket := GetBucketName()
+	objects := map[string]string{ "key1": "bar",}
+
+	err := CreateBucket(svc, bucket)
+	err = CreateObjects(svc, bucket, objects)
+
+	gotData, err := GetObject(svc, bucket, "key1")
+	assert.Equal(gotData, "bar")
+
+	err = PutObjectWithIfNoneMatch(svc, bucket, "key1", "zar", "*")
+	assert.NotNil(err)
+	if err != nil {
+		if awsErr, ok := err.(awserr.Error); ok {
+
+			assert.Equal(awsErr.Code(), "PreconditionFailed")
+			assert.Equal(awsErr.Message(), "")
+		}
+	}
+
+	oldData, err := GetObject(svc, bucket, "key1")
+	assert.Equal(oldData, "bar")
+}
+
+
+
+
 
