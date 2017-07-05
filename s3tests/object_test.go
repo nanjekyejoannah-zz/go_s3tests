@@ -5,6 +5,8 @@ import (
 	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/aws/aws-sdk-go/service/s3"
 	"time"
+	"fmt"
+	"strings"
 	 . "../Utilities"
 )
 
@@ -1739,6 +1741,258 @@ func (suite *S3Suite) TestPutObjectIfNonMatchOverwriteExistedFailed(){
 	oldData, err := GetObject(svc, bucket, "key1")
 	assert.Equal(oldData, "bar")
 }
+
+//......................................Multipart Upload...................................................................
+
+func (suite *S3Suite) TestAbortMultipartUploadInvalid(){
+
+	/* 
+		Resource : object, method: get
+		Scenario : Abort given invalid arguments.
+		Assertion: fails.
+	*/
+
+	assert := suite
+	bucket := GetBucketName()
+	key := "mymultipart"
+
+	err := CreateBucket(svc, bucket)
+
+	_, err = AbortMultiPartUploadInvalid(svc, bucket, key, key)
+	assert.NotNil(err)
+	if err != nil {
+		if awsErr, ok := err.(awserr.Error); ok {
+
+			assert.Equal(awsErr.Code(), "InvalidParameter")
+			assert.Equal(awsErr.Message(), "1 validation error(s) found.")
+		}
+	}
+
+
+}
+
+func (suite *S3Suite) TestAbortMultipartUploadNotfound(){
+
+	/* 
+		Resource : object, method: get
+		Scenario : Abort non existant multipart upload
+		Assertion: fails.
+	*/
+
+	assert := suite
+	bucket := GetBucketName()
+	key := "mymultipart"
+
+	err := CreateBucket(svc, bucket)
+
+	_, err = AbortMultiPartUpload(svc, bucket, key, key)
+	assert.NotNil(err)
+	if err != nil {
+		if awsErr, ok := err.(awserr.Error); ok {
+
+			assert.Equal(awsErr.Code(), "NoSuchUpload")
+			assert.Equal(awsErr.Message(), "")
+		}
+	}
+
+
+}
+
+func (suite *S3Suite) TestAbortMultipartUpload(){
+
+	/* 
+		Resource : object, method: get
+		Scenario : Abort multipart upload
+		Assertion: successful.
+	*/
+
+	assert := suite
+	bucket := GetBucketName()
+	bucket2 := GetBucketName()
+	key := "key"
+	fmtstring := fmt.Sprintf("%s/%s", bucket2, key)
+	objects := map[string]string{key: "golf",}
+
+	err := CreateBucket(svc, bucket2)
+	err = CreateBucket(svc, bucket)
+	err = CreateObjects(svc, bucket2, objects)
+
+	result, err := InitiateMultipartUpload(svc, bucket, "key")
+	_, err = UploadCopyPart(svc, bucket, key, fmtstring, *result.UploadId, int64(1))
+
+	_, err = AbortMultiPartUpload(svc, bucket, key, *result.UploadId)
+	assert.Nil(err)
+
+	resp, err := Listparts(svc, bucket, key, *result.UploadId)
+	assert.Equal(len(resp.Parts), 0)
+	assert.NotNil(err)
+	if err != nil {
+		if awsErr, ok := err.(awserr.Error); ok {
+
+			assert.Equal(awsErr.Code(), "NoSuchKey")
+			assert.Equal(awsErr.Message(), "")
+		}
+	}
+}
+
+func (suite *S3Suite) TestMultipartUploadOverwriteExistingObject(){
+
+	/* 
+		Resource : object, method: get
+		Scenario : multi-part upload overwrites existing key
+		Assertion: successful.
+	*/
+
+	assert := suite
+	bucket := GetBucketName()
+	num_parts := 2
+
+	payload := strings.Repeat("12345", 1024*1024)
+	key_name := "mymultipart"
+
+	newObject := map[string]string{key_name: "payload",}
+
+	err := CreateBucket(svc, bucket)
+	err = CreateObjects(svc, bucket, newObject)
+
+	result, err := InitiateMultipartUpload(svc, bucket, key_name)
+
+	resp, err := Uploadpart(svc, bucket, key_name, *result.UploadId, payload, int64(num_parts))
+	assert.Nil(err)
+
+	_, err = CompleteMultiUpload(svc, bucket, key_name, int64(num_parts), *result.UploadId, *resp.ETag)
+	assert.Nil(err)
+
+	gotData, err := GetObject(svc, bucket, key_name)
+	assert.Nil(err)
+	assert.Equal(gotData, payload)
+}
+
+func (suite *S3Suite) TestMultipartUploadContents(){
+
+	/* 
+		Resource : object, method: get
+		Scenario : check contents of multi-part upload
+		Assertion: successful.
+	*/
+	assert := suite
+	bucket := GetBucketName()
+	num_parts := 2
+
+	payload := strings.Repeat("12345", 1024*1024)
+	key_name := "mymultipart"
+
+	err := CreateBucket(svc, bucket)
+
+	result, err := InitiateMultipartUpload(svc, bucket, key_name)
+
+	resp, err := Uploadpart(svc, bucket, key_name, *result.UploadId, payload, int64(num_parts))
+	assert.Nil(err)
+
+	_, err = CompleteMultiUpload(svc, bucket, key_name, int64(num_parts), *result.UploadId, *resp.ETag)
+	assert.Nil(err)
+
+	gotData, err := GetObject(svc, bucket, key_name)
+	assert.Nil(err)
+	assert.Equal(gotData, payload)
+}
+
+func (suite *S3Suite) TestMultipartUploadInvalidPart(){
+
+	/* 
+		Resource : object, method: get
+		Scenario : check failure on multiple multi-part upload with invalid etag
+		Assertion: fails.
+	*/
+	assert := suite
+	bucket := GetBucketName()
+	num_parts := 2
+
+	payload := strings.Repeat("12345", 1024*1024)
+	key_name := "mymultipart"
+
+	err := CreateBucket(svc, bucket)
+
+	result, err := InitiateMultipartUpload(svc, bucket, key_name)
+
+	_, err = Uploadpart(svc, bucket, key_name, *result.UploadId, payload, int64(num_parts))
+	assert.Nil(err)
+
+	_, err = CompleteMultiUpload(svc, bucket, key_name, int64(num_parts), *result.UploadId, "")
+	assert.NotNil(err)
+	if err != nil {
+		if awsErr, ok := err.(awserr.Error); ok {
+
+			assert.Equal(awsErr.Code(), "InvalidPart")
+			assert.Equal(awsErr.Message(), "")
+		}
+	}
+}
+
+func (suite *S3Suite) TestMultipartUploadNoSuchUpload(){
+
+	/* 
+		Resource : object, method: get
+		Scenario : check failure on multiple multi-part upload with invalid upload id
+		Assertion: fails.
+	*/
+	assert := suite
+	bucket := GetBucketName()
+	num_parts := 2
+
+	payload := strings.Repeat("12345", 1024*1024)
+	key_name := "mymultipart"
+
+	err := CreateBucket(svc, bucket)
+
+	result, err := InitiateMultipartUpload(svc, bucket, key_name)
+
+	resp, err := Uploadpart(svc, bucket, key_name, *result.UploadId, payload, int64(num_parts))
+	assert.Nil(err)
+
+	_, err = CompleteMultiUpload(svc, bucket, key_name, int64(num_parts), "*result.UploadId", *resp.ETag)
+	assert.NotNil(err)
+	if err != nil {
+		if awsErr, ok := err.(awserr.Error); ok {
+
+			assert.Equal(awsErr.Code(), "NoSuchKey")
+			assert.Equal(awsErr.Message(), "")
+		}
+	}
+}
+
+func (suite *S3Suite) TestUploadPartNoSuchUpload(){
+
+	/* 
+		Resource : object, method: get
+		Scenario : check failure on multiple multi-part upload with invalid upload id
+		Assertion: fails.
+	*/
+	assert := suite
+	bucket := GetBucketName()
+	num_parts := 2
+
+	payload := strings.Repeat("12345", 1024*1024)
+	key_name := "mymultipart"
+
+	err := CreateBucket(svc, bucket)
+
+	_, err = InitiateMultipartUpload(svc, bucket, key_name)
+
+	_, err = Uploadpart(svc, bucket, key_name, "*result.UploadId", payload, int64(num_parts))
+	assert.NotNil(err)
+	if err != nil {
+		if awsErr, ok := err.(awserr.Error); ok {
+
+			assert.Equal(awsErr.Code(), "NoSuchKey")
+			assert.Equal(awsErr.Message(), "")
+		}
+	}
+}
+
+
+
+
 
 
 

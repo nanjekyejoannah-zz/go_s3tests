@@ -21,7 +21,8 @@ func (suite *S3Suite) SetupTest() {
 
 func TestSuite(t *testing.T) {
 
-    suite.Run(t, new(S3Suite))
+    //suite.Run(t, new(S3Suite))
+    suite.Run(t, new(HostStyleSuite))
 }
 
 func (suite *S3Suite) TearDownTest() {

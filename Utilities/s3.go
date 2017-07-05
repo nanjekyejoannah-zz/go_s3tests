@@ -5,10 +5,12 @@ import (
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/aws/aws-sdk-go/aws/session"
+	"github.com/aws/aws-sdk-go/aws/request"
 	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/aws/aws-sdk-go/service/s3/s3manager"
 
 	"bytes"
+	"golang.org/x/net/context"
 	"fmt"
 	"github.com/spf13/viper"
 	"io"
@@ -49,6 +51,22 @@ var downloader = s3manager.NewDownloader(sess)
 func GetConn() (*s3.S3) {
 
 	return svc	
+}
+
+func WithIfNoneMatch(conditions ...string) request.Option {
+    return func(r *request.Request) {
+       for _, v := range conditions {
+            r.HTTPRequest.Header.Add("If-None-Match", v)
+       }
+    }
+}
+
+func WithIfMatch(conditions ...string) request.Option {
+    return func(r *request.Request) {
+       for _, v := range conditions {
+            r.HTTPRequest.Header.Add("If-Match", v)
+       }
+    }
 }
 
 func CreateBucket(svc *s3.S3, bucket string) error {
@@ -491,7 +509,7 @@ func ReadSSECEcrypted(svc *s3.S3, bucket string, key string, sse []string) (stri
 	results, err := svc.GetObject(&s3.GetObjectInput{
 		Bucket: aws.String(bucket), 
 		Key: aws.String(key), 
-		SSECustomerAlgorithm: &sse[0],
+		//SSECustomerAlgorithm: &sse[0],
 		//SSECustomerKey: &sse[1],
 		SSECustomerKeyMD5: &sse[2],
 	})
@@ -537,7 +555,7 @@ func WriteSSEKMSkeyId(svc *s3.S3, bucket string, key string, content string, sse
 		Bucket: &bucket,
 		Key:    &key,
 		SSECustomerKeyMD5: &sse[0],
-		SSEKMSKeyId: &kmskeyid,
+		//SSEKMSKeyId: &kmskeyid,
 	})
 
 	return err
@@ -642,7 +660,33 @@ func GetObjectWithIfNoneMatch(svc *s3.S3, bucket string, key string, condition s
 
 func GetObjectWithIfModifiedSince(svc *s3.S3, bucket string, key string, time time.Time) (string, error) {
 
-	results, err := svc.GetObject(&s3.GetObjectInput{Bucket: aws.String(bucket), Key: aws.String(key), IfModifiedSince: time})
+	results, err := svc.GetObject(&s3.GetObjectInput{Bucket: aws.String(bucket), Key: aws.String(key), IfModifiedSince: &time})
+
+	var resp string
+	var errr error
+
+	if err == nil {
+
+		buf := bytes.NewBuffer(nil)
+		if _, err := io.Copy(buf, results.Body); err != nil {
+			return "", err
+		}
+
+		byteArray := buf.Bytes()
+
+		resp, errr = string(byteArray[:]), err
+
+	} else {
+
+		resp, errr = "", err
+	}
+
+	return resp, errr
+}
+
+func GetObjectWithIfUnModifiedSince(svc *s3.S3, bucket string, key string, time time.Time) (string, error) {
+
+	results, err := svc.GetObject(&s3.GetObjectInput{Bucket: aws.String(bucket), Key: aws.String(key), IfUnmodifiedSince: &time})
 
 	var resp string
 	var errr error
@@ -672,4 +716,145 @@ func GetObj(svc *s3.S3, bucket string, key string) (*s3.GetObjectOutput, error) 
 	results, err := svc.GetObject(&s3.GetObjectInput{Bucket: aws.String(bucket), Key: aws.String(key)})
 
 	return results, err
+}
+
+func PutObjectWithIfMatch (svc *s3.S3, bucket string, key string, content string, tag string) error {
+
+	data, err := GetObject(svc, bucket, key)
+
+	if data != "" {
+
+		fmt.Sprintf("some data, %v", data)
+	}
+
+	if err == nil{
+
+		ctx := context.Background()
+		ctx, _ = context.WithTimeout(ctx, time.Minute)
+
+		_, err = svc.PutObjectWithContext(ctx, &s3.PutObjectInput{
+		    Bucket: aws.String(bucket),
+		    Key:    aws.String(key),
+		    Body:   strings.NewReader(content),
+		}, WithIfNoneMatch(tag))
+
+	}
+
+	return err
+}
+
+func PutObjectWithIfNoneMatch (svc *s3.S3, bucket string, key string, content string, tag string) error {
+
+	ctx := context.Background()
+	ctx, _ = context.WithTimeout(ctx, time.Minute)
+
+	_, err = svc.PutObjectWithContext(ctx, &s3.PutObjectInput{
+	    Bucket: aws.String(bucket),
+	    Key:    aws.String(key),
+	    Body:   strings.NewReader(content),
+	}, WithIfNoneMatch(tag))
+
+	return err
+}
+
+func AbortMultiPartUpload(svc *s3.S3, bucket string, key string, uploadid string) (*s3.AbortMultipartUploadOutput, error) {
+
+	params := &s3.AbortMultipartUploadInput{
+		Bucket: aws.String(bucket),
+	    Key:    aws.String(key),
+	    UploadId: aws.String(uploadid),
+	}
+
+	result, err := svc.AbortMultipartUpload(params)
+
+	return result, err
+}
+
+func AbortMultiPartUploadInvalid(svc *s3.S3, bucket string, key string, uploadid string) (*s3.AbortMultipartUploadOutput, error) {
+
+	params := &s3.AbortMultipartUploadInput{
+		Bucket: aws.String(bucket),
+	    Key:    aws.String(key),
+	}
+
+	result, err := svc.AbortMultipartUpload(params)
+
+	return result, err
+}
+
+func InitiateMultipartUpload(svc *s3.S3, bucket string, key string) (*s3.CreateMultipartUploadOutput, error){
+
+	input := &s3.CreateMultipartUploadInput{
+    	Bucket: aws.String(bucket),
+    	Key:    aws.String(key),
+	}
+
+	result, err := svc.CreateMultipartUpload(input)
+
+	return result, err
+
+}
+
+func UploadCopyPart (svc *s3.S3, bucket string, key string, source string, uploadid string, partnumber int64 ) (*s3.UploadPartCopyOutput, error){
+
+	input := &s3.UploadPartCopyInput{
+	    Bucket:     aws.String(bucket),
+	    CopySource: aws.String(source),
+	    Key:        aws.String(key),
+	    PartNumber: aws.Int64(partnumber),
+	    UploadId:   aws.String(uploadid),
+	}
+
+	result, err := svc.UploadPartCopy(input)
+
+	return result, err
+}
+
+func CompleteMultiUpload(svc *s3.S3, bucket string, key string, partNum int64, uploadid string, etag string )(*s3.CompleteMultipartUploadOutput, error){
+
+	input := &s3.CompleteMultipartUploadInput{
+	    Bucket: aws.String(bucket),
+	    Key:    aws.String(key),
+	    MultipartUpload: &s3.CompletedMultipartUpload{
+	        Parts: []*s3.CompletedPart{
+		            {
+		                ETag:       aws.String(etag),
+		                PartNumber: aws.Int64(partNum),
+		            },
+		        },
+		    },
+		UploadId: aws.String(uploadid),
+	}
+
+	result, err := svc.CompleteMultipartUpload(input)
+
+	return result, err
+}
+
+func Listparts (svc *s3.S3, bucket string, key string, uploadid string)(*s3.ListPartsOutput, error){
+
+	input := &s3.ListPartsInput{
+	    Bucket:   aws.String(bucket),
+	    Key:      aws.String(key),
+	    UploadId: aws.String(uploadid),
+	}
+
+	result, err := svc.ListParts(input)
+
+	return result, err
+}
+
+func Uploadpart (svc *s3.S3, bucket string, key string, uploadid string, content string, partNum int64)(*s3.UploadPartOutput, error){
+
+	input := &s3.UploadPartInput{
+	    Body:       aws.ReadSeekCloser(strings.NewReader(content)),
+	    Bucket:     aws.String(bucket),
+	    Key:        aws.String(key),
+	    PartNumber: aws.Int64(partNum),
+	    UploadId:   aws.String(uploadid),
+	}
+
+	result, err := svc.UploadPart(input)
+
+	return result, err
 }
