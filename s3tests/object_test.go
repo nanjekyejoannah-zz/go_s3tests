@@ -10,6 +10,46 @@ import (
 	 . "../Utilities"
 )
 
+func (suite *S3Suite) TestObjectCreateUnreadable() {
+
+	/* 
+		Resource : object, method: put
+		Scenario : write to non-printing key 
+		Assertion: passes.
+	*/
+
+	assert := suite
+	bucket := GetBucketName()
+	objects := map[string]string{ string('\x0a'): "echo",}
+
+	err := CreateBucket(svc, bucket)
+	err = CreateObjects(svc, bucket, objects)
+	assert.Nil(err)
+}
+
+func (suite *S3Suite) TestMultiObjectDelete() {
+
+	/* 
+		Resource : object, method: put
+		Scenario : delete multiple objects
+		Assertion: deletes multiple objects with a single call.
+	*/
+
+	assert := suite
+	bucket := GetBucketName()
+	objects := map[string]string{ "foo": "echo", "bar": "lima", "baz": "golf",}
+
+	err := CreateBucket(svc, bucket)
+	err = CreateObjects(svc, bucket, objects)
+	assert.Nil(err)
+
+	DeleteObjects(svc, bucket)
+
+	resp, err := GetObjects(svc, bucket) 
+	assert.Nil(err)
+	assert.Equal(0, len(resp.Contents))
+}
+
 func (suite *S3Suite) TestObjectListMany() {
 
 	/* 
@@ -1989,6 +2029,443 @@ func (suite *S3Suite) TestUploadPartNoSuchUpload(){
 		}
 	}
 }
+
+//....
+
+//.....................................MD5 headers..............................................................................
+
+func (suite *S3Suite) TestObjectCreateBadMd5InvalidShort() {
+
+	/* 
+		Resource : object, method: put
+		Scenario : create w/invalid MD5. 
+		Assertion: fails.
+	*/
+
+	assert := suite
+	headers := map[string]string{"Content-MD5": "YWJyYWNhZGFicmE=",}
+	content := "bar"
+
+	err := SetupObjectWithHeader(svc, content, headers)
+	assert.NotNil(err)
+	if err != nil {
+		if awsErr, ok := err.(awserr.Error); ok {
+
+			assert.Equal(awsErr.Code(), "InvalidDigest")
+			assert.Equal(awsErr.Message(), "")
+		}
+	}
+
+}
+
+func (suite *S3Suite) TestObjectCreateBadMd5Bad() {
+
+	/* 
+		Resource : object, method: put
+		Scenario : create w/mismatched MD5. 
+		Assertion: fails.
+	*/
+
+	assert := suite
+	headers := map[string]string{"Content-MD5": "rL0Y20zC+Fzt72VPzMSk2A==",}
+	content := "bar"
+
+	err := SetupObjectWithHeader(svc, content, headers)
+	assert.NotNil(err)
+	if err != nil {
+		if awsErr, ok := err.(awserr.Error); ok {
+
+			assert.Equal(awsErr.Code(), "BadDigest")
+			assert.Equal(awsErr.Message(), "")
+		}
+	}
+
+}
+
+func (suite *S3Suite) TestObjectCreateBadMd5Empty() {
+
+	/* 
+		Resource : object, method: put
+		Scenario : create w/empty MD5. 
+		Assertion: fails.
+	*/
+
+	assert := suite
+	headers := map[string]string{"Content-MD5": " ",}
+	content := "bar"
+
+	err := SetupObjectWithHeader(svc, content, headers)
+	assert.NotNil(err)
+	if err != nil {
+		if awsErr, ok := err.(awserr.Error); ok {
+
+			assert.Equal(awsErr.Code(), "InvalidDigest")
+			assert.Equal(awsErr.Message(), "")
+		}
+	}
+
+}
+
+func (suite *S3Suite) TestObjectCreateBadMd5Unreadable() {
+
+	/* 
+		Resource : object, method: put
+		Scenario : create w/non-graphics in MD5. 
+		Assertion: fails.
+	*/
+
+	assert := suite
+	headers := map[string]string{"Content-MD5": "\x07",}
+	content := "bar"
+
+	err := SetupObjectWithHeader(svc, content, headers)
+	assert.NotNil(err)
+	if err != nil {
+		if awsErr, ok := err.(awserr.Error); ok {
+
+			assert.Equal(awsErr.Code(), "AccessDenied")
+			assert.Equal(awsErr.Message(), "")
+		}
+	}
+
+}
+
+func (suite *S3Suite) TestObjectCreateBadMd5None() {
+
+	/* 
+		Resource : object, method: put
+		Scenario : create w/no MD5 header. 
+		Assertion: suceeds.
+	*/
+
+	assert := suite
+	headers := map[string]string{}
+	content := "bar"
+
+	err := SetupObjectWithHeader(svc, content, headers)
+	assert.Nil(err)
+
+}
+
+//.........................................Expect Headers............................................................
+
+func (suite *S3Suite) TestObjectCreateBadExpectMismatch() {
+
+	/* 
+		Resource : object, method: put
+		Scenario : create w/Expect 200. 
+		Assertion: garbage, but S3 succeeds!.
+	*/
+
+	assert := suite
+	headers := map[string]string{"Expect": "200",}
+	content := "bar"
+
+	err := SetupObjectWithHeader(svc, content, headers)
+	assert.Nil(err)
+}
+
+func (suite *S3Suite) TestObjectCreateBadExpectEmpty() {
+
+	/* 
+		Resource : object, method: put
+		Scenario : create w/empty expect. 
+		Assertion: succeeds...shouldnt IMHO!.
+	*/
+
+	assert := suite
+	headers := map[string]string{"Expect": "",}
+	content := "bar"
+
+	err := SetupObjectWithHeader(svc, content, headers)
+	assert.Nil(err)
+}
+
+func (suite *S3Suite) TestObjectCreateBadExpectNone() {
+
+	/* 
+		Resource : object, method: put
+		Scenario : create w/no expect. 
+		Assertion: succeeds!.
+	*/
+
+	assert := suite
+	headers := map[string]string{"Expect":""}
+	content := "bar"
+
+	err := SetupObjectWithHeader(svc, content, headers)
+	assert.Nil(err)
+}
+
+func (suite *S3Suite) TestObjectCreateBadExpectUnreadable() {
+
+	/* 
+		Resource : object, method: put
+		Scenario : create w/non-graphic expect. 
+		Assertion: gabbage, succeeds!
+	*/
+
+	assert := suite
+	headers := map[string]string{"Expect":"\x07"}
+	content := "bar"
+
+	err := SetupObjectWithHeader(svc, content, headers)
+	assert.Nil(err)
+}
+
+//..........................................Content Length header............................................
+
+func (suite *S3Suite) testObjectCreateBadContentlengthEmpty() {
+
+	/* 
+		Resource : object, method: put
+		Scenario : create w/empty content length. 
+		Assertion: fails!
+	*/
+
+	assert := suite
+	headers := map[string]string{"Content-Length":" "}
+	content := "bar"
+
+	err := SetupObjectWithHeader(svc, content, headers)
+	assert.NotNil(err)
+	if err != nil {
+		if awsErr, ok := err.(awserr.Error); ok {
+
+			assert.Equal(awsErr.Code(), "None")
+			assert.Equal(awsErr.Message(), "")
+		}
+	}
+}
+
+func (suite *S3Suite) TestObjectCreateBadContentlengthNegative() {
+
+	/* 
+		Resource : object, method: put
+		Scenario : create w/negative content length. 
+		Assertion: fails.. but error message returned from SDK...I dont agree!!!
+	*/
+
+	assert := suite
+	headers := map[string]string{"Content-Length":"-1"}
+	content := "bar"
+
+	err := SetupObjectWithHeader(svc, content, headers)
+	assert.NotNil(err)
+	if err != nil {
+		if awsErr, ok := err.(awserr.Error); ok {
+
+			assert.Equal(awsErr.Code(), "MissingContentLength")
+			assert.Equal(awsErr.Message(), "")
+		}
+	}
+}
+
+func (suite *S3Suite) TestObjectCreateBadContentlengthNone() {
+
+	/* 
+		Resource : object, method: put
+		Scenario : create w/no content length. 
+		Assertion: suceeds
+	*/
+
+	assert := suite
+	headers := map[string]string{"Content-Length":""}
+	content := "bar"
+
+	err := SetupObjectWithHeader(svc, content, headers)
+	assert.Nil(err)
+}
+
+func (suite *S3Suite) TestObjectCreateBadContentlengthUnreadable() {
+
+	/* 
+		Resource : object, method: put
+		Scenario : create w/non-graphic content length. 
+		Assertion: fails
+	*/
+
+	assert := suite
+	headers := map[string]string{"Content-Length":"\x07"}
+	content := "bar"
+
+	err := SetupObjectWithHeader(svc, content, headers)
+	assert.NotNil(err)
+	if err != nil {
+		if awsErr, ok := err.(awserr.Error); ok {
+
+			assert.Equal(awsErr.Code(), "MissingContentLength")
+			assert.Equal(awsErr.Message(), "")
+		}
+	}
+}
+
+func (suite *S3Suite) TestObjectCreateBadContentlengthMismatchAbove() {
+
+	/* 
+		Resource : object, method: put
+		Scenario : create w/content length too long. 
+		Assertion: fails
+	*/
+
+	assert := suite
+	content := "bar"
+	length := string(len(content) + 1)
+	headers := map[string]string{"Content-Length":length}
+
+	err := SetupObjectWithHeader(svc, content, headers)
+	assert.NotNil(err)
+	if err != nil {
+		if awsErr, ok := err.(awserr.Error); ok {
+
+			assert.Equal(awsErr.Code(), "MissingContentLength")
+			assert.Equal(awsErr.Message(), "")
+		}
+	}
+}
+
+//..................................Content-type header.........................................................
+
+func (suite *S3Suite) TestObjectCreateBadContenttypevalid() {
+
+	/* 
+		Resource : object, method: put
+		Scenario : create w/content type text/plain. 
+		Assertion: suceeds!
+	*/
+
+	assert := suite
+	headers := map[string]string{"Content-Type": "text/plain",}
+	content := "bar"
+
+	err := SetupObjectWithHeader(svc, content, headers)
+	assert.Nil(err)
+}
+
+func (suite *S3Suite) TestObjectCreateBadContenttypeEmpty() {
+
+	/* 
+		Resource : object, method: put
+		Scenario : create w/empty content type. 
+		Assertion: suceeds!
+	*/
+
+	assert := suite
+	headers := map[string]string{"Content-Type": " ",}
+	content := "bar"
+
+	err := SetupObjectWithHeader(svc, content, headers)
+	assert.Nil(err)
+}
+
+func (suite *S3Suite) TestObjectCreateBadContenttypeNone() {
+
+	/* 
+		Resource : object, method: put
+		Scenario : create w/no content type. 
+		Assertion: suceeds!
+	*/
+
+	assert := suite
+	headers := map[string]string{"Content-Type": "",}
+	content := "bar"
+
+	err := SetupObjectWithHeader(svc, content, headers)
+	assert.Nil(err)
+}
+
+func (suite *S3Suite) TestObjectCreateBadContenttypeUnreadable() {
+
+	/* 
+		Resource : object, method: put
+		Scenario : create w/non-graphic content type. 
+		Assertion: suceeds!
+	*/
+
+	assert := suite
+	headers := map[string]string{"Content-Type": "\x08",}
+	content := "bar"
+
+	err := SetupObjectWithHeader(svc, content, headers)
+	assert.Nil(err)
+}
+
+//..................................Authorization header.........................................................
+
+func (suite *S3Suite) TestObjectCreateBadAuthorizationUnreadable() {
+
+	/* 
+		Resource : object, method: put
+		Scenario : create w/non-graphic authorization. 
+		Assertion: suceeds.... but should fail
+	*/
+
+	assert := suite
+	content := "bar"
+	
+	headers := map[string]string{"Authorization":"\x07"}
+
+	err := SetupObjectWithHeader(svc, content, headers)
+	assert.Nil(err)
+	if err != nil {
+		if awsErr, ok := err.(awserr.Error); ok {
+
+			assert.Equal(awsErr.Code(), "AccessDenied")
+			assert.Equal(awsErr.Message(), "")
+		}
+	}
+}
+
+func (suite *S3Suite) TestObjectCreateBadAuthorizationEmpty() {
+
+	/* 
+		Resource : object, method: put
+		Scenario :create w/empty authorization. 
+		Assertion: fails
+	*/
+
+	assert := suite
+	content := "bar"
+	
+	headers := map[string]string{"Authorization":" "}
+
+	err := SetupObjectWithHeader(svc, content, headers)
+	assert.Nil(err)
+	if err != nil {
+		if awsErr, ok := err.(awserr.Error); ok {
+
+			assert.Equal(awsErr.Code(), "AccessDenied")
+			assert.Equal(awsErr.Message(), "")
+		}
+	}
+}
+
+func (suite *S3Suite) TestObjectCreateBadAuthorizationNone() {
+
+	/* 
+		Resource : object, method: put
+		Scenario :create w/no authorization. 
+		Assertion: fails
+	*/
+
+	assert := suite
+	content := "bar"
+	
+	headers := map[string]string{"Authorization":""}
+
+	err := SetupObjectWithHeader(svc, content, headers)
+	assert.Nil(err)
+	if err != nil {
+		if awsErr, ok := err.(awserr.Error); ok {
+
+			assert.Equal(awsErr.Code(), "AccessDenied")
+			assert.Equal(awsErr.Message(), "")
+		}
+	}
+}
+
+
+
 
 
 
