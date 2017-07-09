@@ -2030,8 +2030,6 @@ func (suite *S3Suite) TestUploadPartNoSuchUpload(){
 	}
 }
 
-//....
-
 //.....................................MD5 headers..............................................................................
 
 func (suite *S3Suite) TestObjectCreateBadMd5InvalidShort() {
@@ -2046,7 +2044,11 @@ func (suite *S3Suite) TestObjectCreateBadMd5InvalidShort() {
 	headers := map[string]string{"Content-MD5": "YWJyYWNhZGFicmE=",}
 	content := "bar"
 
-	err := SetupObjectWithHeader(svc, content, headers)
+	bucket := GetBucketName()
+	key := "key1"
+	err := CreateBucket(svc, bucket)
+
+	err = SetupObjectWithHeader(svc, bucket, key, content, headers)
 	assert.NotNil(err)
 	if err != nil {
 		if awsErr, ok := err.(awserr.Error); ok {
@@ -2070,7 +2072,11 @@ func (suite *S3Suite) TestObjectCreateBadMd5Bad() {
 	headers := map[string]string{"Content-MD5": "rL0Y20zC+Fzt72VPzMSk2A==",}
 	content := "bar"
 
-	err := SetupObjectWithHeader(svc, content, headers)
+	bucket := GetBucketName()
+	key := "key1"
+	err := CreateBucket(svc, bucket)
+
+	err = SetupObjectWithHeader(svc, bucket, key, content, headers)
 	assert.NotNil(err)
 	if err != nil {
 		if awsErr, ok := err.(awserr.Error); ok {
@@ -2094,7 +2100,11 @@ func (suite *S3Suite) TestObjectCreateBadMd5Empty() {
 	headers := map[string]string{"Content-MD5": " ",}
 	content := "bar"
 
-	err := SetupObjectWithHeader(svc, content, headers)
+	bucket := GetBucketName()
+	key := "key1"
+	err := CreateBucket(svc, bucket)
+
+	err = SetupObjectWithHeader(svc, bucket, key, content, headers)
 	assert.NotNil(err)
 	if err != nil {
 		if awsErr, ok := err.(awserr.Error); ok {
@@ -2118,7 +2128,11 @@ func (suite *S3Suite) TestObjectCreateBadMd5Unreadable() {
 	headers := map[string]string{"Content-MD5": "\x07",}
 	content := "bar"
 
-	err := SetupObjectWithHeader(svc, content, headers)
+	bucket := GetBucketName()
+	key := "key1"
+	err := CreateBucket(svc, bucket)
+
+	err = SetupObjectWithHeader(svc, bucket, key, content, headers)
 	assert.NotNil(err)
 	if err != nil {
 		if awsErr, ok := err.(awserr.Error); ok {
@@ -2142,7 +2156,11 @@ func (suite *S3Suite) TestObjectCreateBadMd5None() {
 	headers := map[string]string{}
 	content := "bar"
 
-	err := SetupObjectWithHeader(svc, content, headers)
+	bucket := GetBucketName()
+	key := "key1"
+	err := CreateBucket(svc, bucket)
+
+	err = SetupObjectWithHeader(svc, bucket, key, content, headers)
 	assert.Nil(err)
 
 }
@@ -2161,7 +2179,11 @@ func (suite *S3Suite) TestObjectCreateBadExpectMismatch() {
 	headers := map[string]string{"Expect": "200",}
 	content := "bar"
 
-	err := SetupObjectWithHeader(svc, content, headers)
+	bucket := GetBucketName()
+	key := "key1"
+	err := CreateBucket(svc, bucket)
+
+	err = SetupObjectWithHeader(svc, bucket, key, content, headers)
 	assert.Nil(err)
 }
 
@@ -2177,7 +2199,11 @@ func (suite *S3Suite) TestObjectCreateBadExpectEmpty() {
 	headers := map[string]string{"Expect": "",}
 	content := "bar"
 
-	err := SetupObjectWithHeader(svc, content, headers)
+	bucket := GetBucketName()
+	key := "key1"
+	err := CreateBucket(svc, bucket)
+
+	err = SetupObjectWithHeader(svc, bucket, key, content, headers)
 	assert.Nil(err)
 }
 
@@ -2193,7 +2219,11 @@ func (suite *S3Suite) TestObjectCreateBadExpectNone() {
 	headers := map[string]string{"Expect":""}
 	content := "bar"
 
-	err := SetupObjectWithHeader(svc, content, headers)
+	bucket := GetBucketName()
+	key := "key1"
+	err := CreateBucket(svc, bucket)
+
+	err = SetupObjectWithHeader(svc, bucket, key, content, headers)
 	assert.Nil(err)
 }
 
@@ -2209,7 +2239,12 @@ func (suite *S3Suite) TestObjectCreateBadExpectUnreadable() {
 	headers := map[string]string{"Expect":"\x07"}
 	content := "bar"
 
-	err := SetupObjectWithHeader(svc, content, headers)
+	bucket := GetBucketName()
+	key := "key1"
+	err := CreateBucket(svc, bucket)
+	
+
+	err = SetupObjectWithHeader(svc, bucket, key, content, headers)
 	assert.Nil(err)
 }
 
@@ -2227,7 +2262,11 @@ func (suite *S3Suite) testObjectCreateBadContentlengthEmpty() {
 	headers := map[string]string{"Content-Length":" "}
 	content := "bar"
 
-	err := SetupObjectWithHeader(svc, content, headers)
+	bucket := GetBucketName()
+	key := "key1"
+	err := CreateBucket(svc, bucket)
+
+	err = SetupObjectWithHeader(svc, bucket, key, content, headers)
 	assert.NotNil(err)
 	if err != nil {
 		if awsErr, ok := err.(awserr.Error); ok {
@@ -2250,7 +2289,11 @@ func (suite *S3Suite) TestObjectCreateBadContentlengthNegative() {
 	headers := map[string]string{"Content-Length":"-1"}
 	content := "bar"
 
-	err := SetupObjectWithHeader(svc, content, headers)
+	bucket := GetBucketName()
+	key := "key1"
+	err := CreateBucket(svc, bucket)
+
+	err = SetupObjectWithHeader(svc, bucket, key, content, headers)
 	assert.NotNil(err)
 	if err != nil {
 		if awsErr, ok := err.(awserr.Error); ok {
@@ -2273,7 +2316,11 @@ func (suite *S3Suite) TestObjectCreateBadContentlengthNone() {
 	headers := map[string]string{"Content-Length":""}
 	content := "bar"
 
-	err := SetupObjectWithHeader(svc, content, headers)
+	bucket := GetBucketName()
+	key := "key1"
+	err := CreateBucket(svc, bucket)
+
+	err = SetupObjectWithHeader(svc, bucket, key, content, headers)
 	assert.Nil(err)
 }
 
@@ -2289,7 +2336,11 @@ func (suite *S3Suite) TestObjectCreateBadContentlengthUnreadable() {
 	headers := map[string]string{"Content-Length":"\x07"}
 	content := "bar"
 
-	err := SetupObjectWithHeader(svc, content, headers)
+	bucket := GetBucketName()
+	key := "key1"
+	err := CreateBucket(svc, bucket)
+
+	err = SetupObjectWithHeader(svc, bucket, key, content, headers)
 	assert.NotNil(err)
 	if err != nil {
 		if awsErr, ok := err.(awserr.Error); ok {
@@ -2313,7 +2364,11 @@ func (suite *S3Suite) TestObjectCreateBadContentlengthMismatchAbove() {
 	length := string(len(content) + 1)
 	headers := map[string]string{"Content-Length":length}
 
-	err := SetupObjectWithHeader(svc, content, headers)
+	bucket := GetBucketName()
+	key := "key1"
+	err := CreateBucket(svc, bucket)
+
+	err = SetupObjectWithHeader(svc, bucket, key, content, headers)
 	assert.NotNil(err)
 	if err != nil {
 		if awsErr, ok := err.(awserr.Error); ok {
@@ -2338,7 +2393,11 @@ func (suite *S3Suite) TestObjectCreateBadContenttypevalid() {
 	headers := map[string]string{"Content-Type": "text/plain",}
 	content := "bar"
 
-	err := SetupObjectWithHeader(svc, content, headers)
+	bucket := GetBucketName()
+	key := "key1"
+	err := CreateBucket(svc, bucket)
+
+	err = SetupObjectWithHeader(svc, bucket, key, content, headers)
 	assert.Nil(err)
 }
 
@@ -2354,7 +2413,11 @@ func (suite *S3Suite) TestObjectCreateBadContenttypeEmpty() {
 	headers := map[string]string{"Content-Type": " ",}
 	content := "bar"
 
-	err := SetupObjectWithHeader(svc, content, headers)
+	bucket := GetBucketName()
+	key := "key1"
+	err := CreateBucket(svc, bucket)
+
+	err = SetupObjectWithHeader(svc, bucket, key, content, headers)
 	assert.Nil(err)
 }
 
@@ -2370,7 +2433,11 @@ func (suite *S3Suite) TestObjectCreateBadContenttypeNone() {
 	headers := map[string]string{"Content-Type": "",}
 	content := "bar"
 
-	err := SetupObjectWithHeader(svc, content, headers)
+	bucket := GetBucketName()
+	key := "key1"
+	err := CreateBucket(svc, bucket)
+
+	err = SetupObjectWithHeader(svc, bucket, key, content, headers)
 	assert.Nil(err)
 }
 
@@ -2386,7 +2453,11 @@ func (suite *S3Suite) TestObjectCreateBadContenttypeUnreadable() {
 	headers := map[string]string{"Content-Type": "\x08",}
 	content := "bar"
 
-	err := SetupObjectWithHeader(svc, content, headers)
+	bucket := GetBucketName()
+	key := "key1"
+	err := CreateBucket(svc, bucket)
+
+	err = SetupObjectWithHeader(svc, bucket, key, content, headers)
 	assert.Nil(err)
 }
 
@@ -2402,10 +2473,14 @@ func (suite *S3Suite) TestObjectCreateBadAuthorizationUnreadable() {
 
 	assert := suite
 	content := "bar"
+
+	bucket := GetBucketName()
+	key := "key1"
+	err := CreateBucket(svc, bucket)
 	
 	headers := map[string]string{"Authorization":"\x07"}
 
-	err := SetupObjectWithHeader(svc, content, headers)
+	err = SetupObjectWithHeader(svc, bucket, key, content, headers)
 	assert.Nil(err)
 	if err != nil {
 		if awsErr, ok := err.(awserr.Error); ok {
@@ -2426,10 +2501,14 @@ func (suite *S3Suite) TestObjectCreateBadAuthorizationEmpty() {
 
 	assert := suite
 	content := "bar"
+
+	bucket := GetBucketName()
+	key := "key1"
+	err := CreateBucket(svc, bucket)
 	
 	headers := map[string]string{"Authorization":" "}
 
-	err := SetupObjectWithHeader(svc, content, headers)
+	err = SetupObjectWithHeader(svc, bucket, key, content, headers)
 	assert.Nil(err)
 	if err != nil {
 		if awsErr, ok := err.(awserr.Error); ok {
@@ -2450,10 +2529,14 @@ func (suite *S3Suite) TestObjectCreateBadAuthorizationNone() {
 
 	assert := suite
 	content := "bar"
+
+	bucket := GetBucketName()
+	key := "key1"
+	err := CreateBucket(svc, bucket)
 	
 	headers := map[string]string{"Authorization":""}
 
-	err := SetupObjectWithHeader(svc, content, headers)
+	err = SetupObjectWithHeader(svc, bucket, key, content, headers)
 	assert.Nil(err)
 	if err != nil {
 		if awsErr, ok := err.(awserr.Error); ok {

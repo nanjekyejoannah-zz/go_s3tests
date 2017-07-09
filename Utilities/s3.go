@@ -69,6 +69,15 @@ func WithIfMatch(conditions ...string) request.Option {
     }
 }
 
+func AddHeaders(conditions map[string]string) request.Option {
+
+    return func(r *request.Request) {
+       for k, v := range conditions {
+            r.HTTPRequest.Header.Add(k,v)
+       }
+    }
+}
+
 func CreateBucket(svc *s3.S3, bucket string) error {
 
 	_, err := svc.CreateBucket(&s3.CreateBucketInput{
@@ -373,45 +382,6 @@ func GeneratePresignedUrlGetObject(svc *s3.S3, bucket string, key string) (strin
 
 	return urlStr, err
 }
-
-func SetBucketLifecycle(svc *s3.S3, bucket string, id string, status string, days int64) (*s3.PutBucketLifecycleConfigurationOutput, error) {
-
-	input := &s3.PutBucketLifecycleConfigurationInput{
-		Bucket: aws.String(bucket),
-		LifecycleConfiguration: &s3.BucketLifecycleConfiguration{
-			Rules: []*s3.LifecycleRule{
-				{
-					ID:     aws.String(id),
-					Status: aws.String(status),
-					Transitions: []*s3.Transition{
-						{
-							Days:         aws.Int64(days),
-							StorageClass: aws.String("GLACIER"),
-						},
-					},
-				},
-			},
-		},
-	}
-
-	result, err := svc.PutBucketLifecycleConfiguration(input)
-
-	return result, err
-	
-}
-
-func GetBucketLifecycle(svc *s3.S3, bucket string) (*s3.GetBucketLifecycleConfigurationOutput, error) {
-
-	input := &s3.GetBucketLifecycleConfigurationInput{
-		Bucket: aws.String("examplebucket"),
-	}
-
-	result, err := svc.GetBucketLifecycleConfiguration(input)
-
-	return result, err
-	
-}
-
 
 func DeletePrefixedBuckets(svc *s3.S3){
 
@@ -857,4 +827,42 @@ func Uploadpart (svc *s3.S3, bucket string, key string, uploadid string, content
 	result, err := svc.UploadPart(input)
 
 	return result, err
+}
+
+func SetupObjectWithHeader(svc *s3.S3, bucket string, key string, content string, headers map[string]string) (error) {
+
+	ctx := context.Background()
+	ctx, _ = context.WithTimeout(ctx, time.Minute)
+
+	_, err = svc.PutObjectWithContext(ctx, &s3.PutObjectInput{
+		Bucket: aws.String(bucket),
+		Key:    aws.String(key),
+		Body:   strings.NewReader(content),
+	}, AddHeaders(headers))
+
+	return err
+}
+
+func CreateBucketWithHeader(svc *s3.S3, bucket string, headers map[string]string) error {
+
+	ctx := context.Background()
+	ctx, _ = context.WithTimeout(ctx, time.Minute)
+
+	_, err := svc.CreateBucketWithContext(ctx, &s3.CreateBucketInput{
+		Bucket: aws.String(bucket),
+	}, AddHeaders(headers))
+
+	return err
+}
+
+func SetACL (svc *s3.S3, bucket string, acl string)(*s3.PutBucketAclOutput, error){
+
+	req, resp := svc.PutBucketAclRequest(&s3.PutBucketAclInput{
+		Bucket: aws.String(bucket),
+		ACL: 	aws.String(acl),
+	})
+
+	err := req.Send()
+
+	return resp, err
 }
