@@ -8,6 +8,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws/request"
 	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/aws/aws-sdk-go/service/s3/s3manager"
+	"github.com/aws/aws-sdk-go/aws/signer/v4"
 
 	"bytes"
 	"golang.org/x/net/context"
@@ -17,6 +18,7 @@ import (
 	"strings"
 	"os"
 	"time"
+	"net/http"
 )
 
 func LoadConfig() error {
@@ -34,14 +36,14 @@ func LoadConfig() error {
 
 var err = LoadConfig()
 
-var creds = credentials.NewStaticCredentials(viper.GetString("s3main.access_key"), viper.GetString("s3main.access_secret"), "")
+var Creds = credentials.NewStaticCredentials(viper.GetString("s3main.access_key"), viper.GetString("s3main.access_secret"), "")
 
 var cfg = aws.NewConfig().WithRegion(viper.GetString("s3main.region")).
 	WithEndpoint(viper.GetString("s3main.endpoint")).
 	WithDisableSSL(true).
 	WithLogLevel(3).
 	WithS3ForcePathStyle(true).
-	WithCredentials(creds)
+	WithCredentials(Creds)
 
 var sess = session.Must(session.NewSession())
 var svc = s3.New(sess, cfg)
@@ -865,4 +867,26 @@ func SetACL (svc *s3.S3, bucket string, acl string)(*s3.PutBucketAclOutput, erro
 	err := req.Send()
 
 	return resp, err
+}
+
+func SetupRequest(serviceName, region, body string) (*http.Request, io.ReadSeeker) {
+
+	endpoint := "https://" + serviceName + "." + region + "." + viper.GetString("s3main.endpoint")
+	reader := strings.NewReader(body)
+	req, _ := http.NewRequest("POST", endpoint, reader)
+	req.Header.Add("X-Amz-Target", "prefix.Operation")
+	req.Header.Add("Content-Type", "application/x-amz-json-1.0")
+	req.Header.Add("Content-Length", string(len(body)))
+	req.Header.Add("X-Amz-Meta-Other-Header", "some-value=!@#$%^&* (+)")
+	req.Header.Add("X-Amz-Meta-Other-Header_With_Underscore", "some-value=!@#$%^&* (+)")
+	req.Header.Add("X-amz-Meta-Other-Header_With_Underscore", "some-value=!@#$%^&* (+)")
+
+	return req, reader
+}
+
+func SetupSigner() v4.Signer {
+
+	return v4.Signer{
+		Credentials: Creds,
+	}
 }
