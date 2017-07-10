@@ -1,30 +1,27 @@
 package s3test
 
 import (
-	
 	"github.com/stretchr/testify/suite"
 
-	"github.com/spf13/viper"
+	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/signer/v4"
 	"github.com/aws/aws-sdk-go/service/s3"
-	"github.com/aws/aws-sdk-go/aws"
+	"github.com/spf13/viper"
 
+	"bytes"
+	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
-	"io/ioutil"
 	"net/url"
-	"bytes"
 	"strings"
-	
 
 	"time"
-
 
 	. "../Utilities"
 )
 
 type HeadSuite struct {
-    suite.Suite
+	suite.Suite
 }
 
 func (suite *S3Suite) TestPresignRequest() {
@@ -33,7 +30,7 @@ func (suite *S3Suite) TestPresignRequest() {
 	region := viper.GetString("s3main.region")
 	req, body := SetupRequest("S3", region, "{}")
 
-	signer := SetupSigner()
+	signer := SetupSigner(Creds)
 	signer.Presign(req, body, "s3", region, 300*time.Second, time.Unix(0, 0))
 
 	qry := req.URL.Query()
@@ -50,10 +47,10 @@ func (suite *S3Suite) TestSignRequest() {
 	req, body := SetupRequest("S3", region, "{}")
 	expectedauth := "AWS4-HMAC-SHA256 Credential=0555b35654ad1656d804/19700101/mexico/s3/aws4_request, SignedHeaders=content-length;content-type;host;x-amz-content-sha256;x-amz-date;x-amz-meta-other-header;x-amz-meta-other-header_with_underscore;x-amz-target, Signature=6e4d7b48465cb9950553ba962961cc442225707e994ad330c4f250ed367561d3"
 
-	signer := SetupSigner()
+	signer := SetupSigner(Creds)
 	signer.Sign(req, body, "s3", region, time.Unix(0, 0))
 
-	qry:= req.Header
+	qry := req.Header
 	assert.Equal(expectedauth, qry.Get("Authorization"))
 	assert.Equal("19700101T000000Z", qry.Get("X-Amz-Date"))
 }
@@ -64,20 +61,20 @@ func (suite *S3Suite) TestSignBody() {
 	region := viper.GetString("s3main.region")
 	req, body := SetupRequest("S3", region, "yello")
 
-	signer := SetupSigner()
+	signer := SetupSigner(Creds)
 	signer.Sign(req, body, "s3", region, time.Now())
 
 	hash := req.Header.Get("X-Amz-Content-Sha256")
 	assert.Equal("0e6807fb3a06ab2a6ee35df3d89365b2af1266eb390e9e687e9a500de32571bd", hash)
 }
 
-func (suite *S3Suite)  TestPresignEmptyBody() {
+func (suite *S3Suite) TestPresignEmptyBody() {
 
 	assert := suite
 	region := viper.GetString("s3main.region")
 	req, body := SetupRequest("S3", region, "yello")
 
-	signer := SetupSigner()
+	signer := SetupSigner(Creds)
 	signer.Presign(req, body, "s3", region, 5*time.Minute, time.Now())
 
 	hash := req.Header.Get("X-Amz-Content-Sha256")
@@ -90,7 +87,7 @@ func (suite *S3Suite) TestSignUnsignedpayload() {
 	region := viper.GetString("s3main.region")
 	req, body := SetupRequest("S3", region, "yello")
 
-	signer := SetupSigner()
+	signer := SetupSigner(Creds)
 	signer.Presign(req, body, "s3", region, 5*time.Minute, time.Now())
 
 	hash := req.Header.Get("X-Amz-Content-Sha256")
@@ -152,7 +149,9 @@ func (suite *S3Suite) TestSignWithRequestBody_Overwrite() {
 func (suite *S3Suite) TestSignWithBody_ReplaceRequestBody() {
 
 	assert := suite
-	req, seekerBody := SetupRequest("s3", "mexico", "{}")
+	region := viper.GetString("s3main.region")
+
+	req, seekerBody := SetupRequest("S3", region, "{}")
 	req.Body = ioutil.NopCloser(bytes.NewReader([]byte{}))
 
 	s := v4.NewSigner(Creds)
@@ -167,7 +166,9 @@ func (suite *S3Suite) TestSignWithBody_ReplaceRequestBody() {
 func (suite *S3Suite) TestSignWithBody_NoReplaceRequestBody() {
 
 	assert := suite
-	req, seekerBody := SetupRequest("s3", "mexico", "{}")
+	region := viper.GetString("s3main.region")
+
+	req, seekerBody := SetupRequest("S3", region, "{}")
 	req.Body = ioutil.NopCloser(bytes.NewReader([]byte{}))
 
 	s := v4.NewSigner(Creds, func(signer *v4.Signer) {
@@ -181,7 +182,7 @@ func (suite *S3Suite) TestSignWithBody_NoReplaceRequestBody() {
 	assert.Equal(req.Body, origBody)
 }
 
-func (suite *S3Suite)  TestPresignHandler() {
+func (suite *S3Suite) TestPresignHandler() {
 
 	assert := suite
 	req, _ := svc.PutObjectRequest(&s3.PutObjectInput{

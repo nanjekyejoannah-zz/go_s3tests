@@ -884,9 +884,24 @@ func SetupRequest(serviceName, region, body string) (*http.Request, io.ReadSeeke
 	return req, reader
 }
 
-func SetupSigner() v4.Signer {
+func SetupRawRequest(proto, method, url, body string) (*http.Request, io.ReadSeeker) {
+
+	endpoint := proto + "://" + url
+	reader := strings.NewReader(body)
+	req, _ := http.NewRequest(method, endpoint, reader)
+	req.Header.Add("X-Amz-Target", "prefix.Operation")
+	req.Header.Add("Content-Type", "application/x-amz-json-1.0")
+	req.Header.Add("Content-Length", string(len(body)))
+	req.Header.Add("X-Amz-Meta-Other-Header", "some-value=!@#$%^&* (+)")
+	req.Header.Add("X-Amz-Meta-Other-Header_With_Underscore", "some-value=!@#$%^&* (+)")
+	req.Header.Add("X-amz-Meta-Other-Header_With_Underscore", "some-value=!@#$%^&* (+)")
+
+	return req, reader
+}
+
+func SetupSigner(creds *credentials.Credentials) v4.Signer {
 
 	return v4.Signer{
-		Credentials: Creds,
+		Credentials: creds,
 	}
 }

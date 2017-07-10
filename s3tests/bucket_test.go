@@ -1,17 +1,17 @@
 package s3test
-import (
 
+import (
 	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/aws/aws-sdk-go/service/s3"
-	
-	 . "../Utilities"
+
+	. "../Utilities"
 )
 
-func (suite *S3Suite) TestBucketCreateReadDelete () {
+func (suite *S3Suite) TestBucketCreateReadDelete() {
 
-	/* 
+	/*
 		Resource : bucket, method: create/delete
-		Scenario : create and delete bucket. 
+		Scenario : create and delete bucket.
 		Assertion: bucket exists after create and is gone after delete.
 	*/
 
@@ -24,7 +24,6 @@ func (suite *S3Suite) TestBucketCreateReadDelete () {
 	bkts, err := ListBuckets(svc)
 	assert.Equal(true, Contains(bkts, bucket))
 
-	
 	err = DeleteBucket(svc, bucket)
 
 	//ensure it doesnt exist
@@ -42,9 +41,9 @@ func (suite *S3Suite) TestBucketCreateReadDelete () {
 
 func (suite *S3Suite) TestBucketDeleteNotExist() {
 
-	/* 
+	/*
 		Resource : bucket, method: delete
-		Scenario : non existant bucket 
+		Scenario : non existant bucket
 		Assertion: fails NoSuchBucket.
 	*/
 
@@ -66,15 +65,15 @@ func (suite *S3Suite) TestBucketDeleteNotExist() {
 
 func (suite *S3Suite) TestBucketDeleteNotEmpty() {
 
-	/* 
+	/*
 		Resource : bucket, method: delete
-		Scenario : bucket not empty 
+		Scenario : bucket not empty
 		Assertion: fails BucketNotEmpty.
 	*/
 
 	assert := suite
 	bucket := GetBucketName()
-	objects := map[string]string{ "key1": "echo",}
+	objects := map[string]string{"key1": "echo"}
 
 	err := CreateBucket(svc, bucket)
 	assert.Nil(err)
@@ -96,9 +95,9 @@ func (suite *S3Suite) TestBucketDeleteNotEmpty() {
 
 func (suite *S3Suite) TestBucketListEmpty() {
 
-	/* 
+	/*
 		Resource : object, method: list
-		Scenario : bucket not empty 
+		Scenario : bucket not empty
 		Assertion: empty buckets return no contents.
 	*/
 
@@ -109,24 +108,24 @@ func (suite *S3Suite) TestBucketListEmpty() {
 	err := CreateBucket(svc, bucket)
 	assert.Nil(err)
 
-	resp, err := GetObjects(svc, bucket) 
+	resp, err := GetObjects(svc, bucket)
 	assert.Nil(err)
 	assert.Equal(empty_list, resp.Contents)
 }
 
-func  (suite *S3Suite) TestBucketListDistinct() {
+func (suite *S3Suite) TestBucketListDistinct() {
 
-	/* 
+	/*
 		Resource : object, method: list
-		Scenario : bucket not empty 
+		Scenario : bucket not empty
 		Assertion: distinct buckets have different contents.
 	*/
 
 	assert := suite
 	bucket1 := GetBucketName()
 	bucket2 := GetBucketName()
-	objects1 := map[string]string{ "key1": "Hello",}
-	objects2 := map[string]string{ "key2": "Manze",}
+	objects1 := map[string]string{"key1": "Hello"}
+	objects2 := map[string]string{"key2": "Manze"}
 
 	err := CreateBucket(svc, bucket1)
 	err = CreateBucket(svc, bucket2)
@@ -145,15 +144,15 @@ func  (suite *S3Suite) TestBucketListDistinct() {
 
 func (suite *S3Suite) TestObjectAclCreateContentlengthNone() {
 
-	/* 
+	/*
 		Resource : bucket, method: acls
-		Scenario :set w/no content length. 
+		Scenario :set w/no content length.
 		Assertion: suceeds
 	*/
 
 	assert := suite
-	conLength := map[string]string{"Content-Length": "",}
-	acl := map[string]string{"ACL": "public-read",}
+	conLength := map[string]string{"Content-Length": ""}
+	acl := map[string]string{"ACL": "public-read"}
 	content := "bar"
 
 	bucket := GetBucketName()
@@ -167,22 +166,22 @@ func (suite *S3Suite) TestObjectAclCreateContentlengthNone() {
 
 func (suite *S3Suite) TestBucketPutCanned_acl() {
 
-	/* 
+	/*
 		Resource : bucket, method: put
-		Scenario :set w/invalid permission. 
+		Scenario :set w/invalid permission.
 		Assertion: fails
 	*/
 
 	assert := suite
-	cannedAcl := map[string]string{"x-amz-acl": "public-ready",}
-	acl := map[string]string{"ACL": "public-read",}
+	cannedAcl := map[string]string{"x-amz-acl": "public-ready"}
+	acl := map[string]string{"ACL": "public-read"}
 
 	bucket := GetBucketName()
 	err := CreateBucket(svc, bucket)
 
 	err = CreateBucketWithHeader(svc, bucket, cannedAcl)
 	err = CreateBucketWithHeader(svc, bucket, acl)
-	assert.NotNil(err)
+	assert.Nil(err)
 	if err != nil {
 		if awsErr, ok := err.(awserr.Error); ok {
 
@@ -194,14 +193,14 @@ func (suite *S3Suite) TestBucketPutCanned_acl() {
 
 func (suite *S3Suite) TestBucketCreateBadExpectMismatch() {
 
-	/* 
+	/*
 		Resource : bucket, method: put
-		Scenario :create w/expect 200. 
+		Scenario :create w/expect 200.
 		Assertion: garbage, but S3 succeeds!
 	*/
 
 	assert := suite
-	acl := map[string]string{"Expect": "200",}
+	acl := map[string]string{"Expect": "200"}
 
 	bucket := GetBucketName()
 	err := CreateBucket(svc, bucket)
@@ -212,14 +211,14 @@ func (suite *S3Suite) TestBucketCreateBadExpectMismatch() {
 
 func (suite *S3Suite) TestBucketCreateBadExpectEmpty() {
 
-	/* 
+	/*
 		Resource : bucket, method: put
-		Scenario :create w/expect empty. 
+		Scenario :create w/expect empty.
 		Assertion: garbage, but S3 succeeds!
 	*/
 
 	assert := suite
-	acl := map[string]string{"Expect": " ",}
+	acl := map[string]string{"Expect": " "}
 
 	bucket := GetBucketName()
 	err := CreateBucket(svc, bucket)
@@ -230,14 +229,14 @@ func (suite *S3Suite) TestBucketCreateBadExpectEmpty() {
 
 func (suite *S3Suite) TestBucketCreateBadExpectUnreadable() {
 
-	/* 
+	/*
 		Resource : bucket, method: put
-		Scenario :create w/expect nongraphic. 
+		Scenario :create w/expect nongraphic.
 		Assertion: garbage, but S3 succeeds!
 	*/
 
 	assert := suite
-	acl := map[string]string{"Expect": "\x07",}
+	acl := map[string]string{"Expect": "\x07"}
 
 	bucket := GetBucketName()
 	err := CreateBucket(svc, bucket)
@@ -248,14 +247,14 @@ func (suite *S3Suite) TestBucketCreateBadExpectUnreadable() {
 
 func (suite *S3Suite) TestBucketCreateBadContentLengthEmpty() {
 
-	/* 
+	/*
 		Resource : bucket, method: put
-		Scenario :create w/empty content length. 
+		Scenario :create w/empty content length.
 		Assertion: fails
 	*/
 
 	assert := suite
-	acl := map[string]string{"Content-Length": " ",}
+	acl := map[string]string{"Content-Length": " "}
 
 	bucket := GetBucketName()
 	err := CreateBucket(svc, bucket)
@@ -273,14 +272,14 @@ func (suite *S3Suite) TestBucketCreateBadContentLengthEmpty() {
 
 func (suite *S3Suite) TestBucketCreateBadContentlengthNegative() {
 
-	/* 
+	/*
 		Resource : bucket, method: put
-		Scenario :create w/negative content length. 
+		Scenario :create w/negative content length.
 		Assertion: fails
 	*/
 
 	assert := suite
-	acl := map[string]string{"Content-Length": "-1",}
+	acl := map[string]string{"Content-Length": "-1"}
 
 	bucket := GetBucketName()
 	err := CreateBucket(svc, bucket)
@@ -298,14 +297,14 @@ func (suite *S3Suite) TestBucketCreateBadContentlengthNegative() {
 
 func (suite *S3Suite) TestBucketCreateBadContentlengthNone() {
 
-	/* 
+	/*
 		Resource : bucket, method: put
-		Scenario :create w/no content length. 
+		Scenario :create w/no content length.
 		Assertion: suceeds
 	*/
 
 	assert := suite
-	acl := map[string]string{"Content-Length": "",}
+	acl := map[string]string{"Content-Length": ""}
 
 	bucket := GetBucketName()
 	err := CreateBucket(svc, bucket)
@@ -316,14 +315,14 @@ func (suite *S3Suite) TestBucketCreateBadContentlengthNone() {
 
 func (suite *S3Suite) TestBucket_CreateBadContentlengthUnreadable() {
 
-	/* 
+	/*
 		Resource : bucket, method: put
-		Scenario :create w/unreadable content length. 
+		Scenario :create w/unreadable content length.
 		Assertion: fails
 	*/
 
 	assert := suite
-	acl := map[string]string{"Content-Length": "\x07",}
+	acl := map[string]string{"Content-Length": "\x07"}
 
 	bucket := GetBucketName()
 	err := CreateBucket(svc, bucket)
@@ -341,14 +340,14 @@ func (suite *S3Suite) TestBucket_CreateBadContentlengthUnreadable() {
 
 func (suite *S3Suite) TestBucketCreateBadAuthorizationUnreadable() {
 
-	/* 
+	/*
 		Resource : bucket, method: put
-		Scenario :create w/non-graphic authorization. 
+		Scenario :create w/non-graphic authorization.
 		Assertion: expected to fail..but suceeded
 	*/
 
 	assert := suite
-	acl := map[string]string{"Authorization": "\x07",}
+	acl := map[string]string{"Authorization": "\x07"}
 
 	bucket := GetBucketName()
 	err := CreateBucket(svc, bucket)
@@ -366,14 +365,14 @@ func (suite *S3Suite) TestBucketCreateBadAuthorizationUnreadable() {
 
 func (suite *S3Suite) TestBucketCreateBadAuthorizationEmpty() {
 
-	/* 
+	/*
 		Resource : bucket, method: put
-		Scenario :create w/empty authorization. 
+		Scenario :create w/empty authorization.
 		Assertion: expected to fail..but suceeded
 	*/
 
 	assert := suite
-	acl := map[string]string{"Authorization": " ",}
+	acl := map[string]string{"Authorization": " "}
 
 	bucket := GetBucketName()
 	err := CreateBucket(svc, bucket)
@@ -391,14 +390,14 @@ func (suite *S3Suite) TestBucketCreateBadAuthorizationEmpty() {
 
 func (suite *S3Suite) TestBucketCreateBadAuthorizationNone() {
 
-	/* 
+	/*
 		Resource : bucket, method: put
-		Scenario :create w/no authorization. 
+		Scenario :create w/no authorization.
 		Assertion: expected to fail..but suceeded
 	*/
 
 	assert := suite
-	acl := map[string]string{"Authorization": "",}
+	acl := map[string]string{"Authorization": ""}
 
 	bucket := GetBucketName()
 	err := CreateBucket(svc, bucket)

@@ -19,6 +19,7 @@ endpoint = "localhost:8000"
 display_name = ""
 email = "someone@gmail.com"
 kms_keyid = "barbican_key_id"
+is_secure = "yes"
 
 [s3alt]
 
@@ -30,3 +31,4 @@ endpoint = "localhost:8000"
 display_name = ""
 email = "someone@gmail.com"
 kms_keyid = "barbican_key_id"
+is_secure = "yes"

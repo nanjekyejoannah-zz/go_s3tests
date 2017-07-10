@@ -1,66 +1,180 @@
 package s3test
 
 import (
-	
 	"github.com/stretchr/testify/suite"
-	"fmt"
 
-	"github.com/aws/aws-sdk-go/service/s3"
-	//"github.com/aws/aws-sdk-go/aws"
-	//"github.com/aws/aws-sdk-go/awstesting/unit"
+	//"github.com/aws/aws-sdk-go/service/s3"
+	"bytes"
+	"github.com/aws/aws-sdk-go/aws/signer/v4"
 	"github.com/spf13/viper"
+	"net/http"
+	//"net/url"
+
+	"time"
+
+	. "../Utilities"
 )
 
 type HostStyleSuite struct {
-    suite.Suite
+	suite.Suite
 }
 
-type s3BucketTest struct { 
-	bucket  string
-	url     string
-	errCode string
+type s3TestCase struct {
+	bucket string
+	key    string
+	url    string
 }
 
-var domain = fmt.Sprintf( "http://%s", viper.GetString("s3main.endpoint") )
+var bucket = "bucket1"
+var key = "key1"
 
-func getUrl(bktname string)(string){
-	url := fmt.Sprintf("%s%s", domain, bktname)
+func (suite *HostStyleSuite) SetupSuite() {
 
-	return url
+	bucket := GetBucketName()
+	objects := map[string]string{key: "echo"}
+
+	_ = CreateBucket(svc, bucket)
+	_ = CreateObjects(svc, bucket, objects)
 }
 
-func (suite *HostStyleSuite) TestAccelerateNoSSLBucketBuild() {
+func (suite *HostStyleSuite) TestOrdinaryCallingFormatNoSSL() {
 
 	assert := suite
+	signer := v4.NewSigner(Creds)
+	endpoint := viper.GetString("s3main.endpoint")
+	expectBody := []byte("abc123")
 
-	tests := []s3BucketTest{
-		{"a.b.c", getUrl("a.b.c"), ""},
-		{"a..bc", getUrl("a..bc"), ""},
-	}
+	ur := "http://" + endpoint + "/" + bucket + "/" + key
 
-	for _, test := range tests {
-		req, _ := svc.ListObjectsRequest(&s3.ListObjectsInput{Bucket: &test.bucket})
-		req.Build()
-		assert.Equal (test.url, req.HTTPRequest.URL.String())
-	}
+	req, err := http.NewRequest("GET", ur, nil)
+
+	_, err = signer.Sign(req, bytes.NewReader(expectBody), "service", "region", time.Now())
+	assert.Nil(err)
+
+	resp, err := http.DefaultClient.Do(req)
+	assert.Nil(err)
+	assert.Equal(http.StatusOK, resp.StatusCode)
 }
 
-func (suite *HostStyleSuite) TestHostStyleBucketBuildNoSSL() {
-
-	//svc := s3.New(unit.Session, &aws.Config{DisableSSL: aws.Bool(true)})
+func (suite *HostStyleSuite) TestOrdinaryCallingFormatSSL() {
 
 	assert := suite
+	signer := v4.NewSigner(Creds)
+	endpoint := viper.GetString("s3main.endpoint")
+	expectBody := []byte("abc123")
 
-	tests := []s3BucketTest{
-		{"abc", getUrl("abc"), ""},
-		{"a.b.c", getUrl("a.b.c"), ""},
-		{"a$b$c", getUrl("a%24b%24c"), "InvalidParameterException"},
-	}
+	ur := "http://" + endpoint + "/" + bucket + "/" + key
 
-	for _, test := range tests {
-		req, _ := svc.ListObjectsRequest(&s3.ListObjectsInput{Bucket: &test.bucket})
-		req.Build()
-		assert.Equal (test.url, req.HTTPRequest.URL.String())
-	}
+	//u, _ := url.Parse(ur)
+
+	req, err := http.NewRequest("GET", ur, nil)
+
+	_, err = signer.Sign(req, bytes.NewReader(expectBody), "service", "region", time.Now())
+	assert.Nil(err)
+
+	resp, err := http.DefaultClient.Do(req)
+	assert.Nil(err)
+	assert.Equal(http.StatusOK, resp.StatusCode)
 }
 
+// func (suite *HostStyleSuite) TestProtocolIndependentOrdinaryCallingFormatSSL() {
+
+// 	assert := suite
+// 	signer := v4.NewSigner(Creds)
+// 	endpoint := viper.GetString("s3main.endpoint")
+// 	expectBody := []byte("abc123")
+
+// 	ur := endpoint + "/" + bucket + "/" + key
+
+// 	req, err := http.NewRequest("GET", ur, nil)
+
+// 	_, err = signer.Sign(req, bytes.NewReader(expectBody), "service", "region", time.Now())
+// 	assert.Nil(err)
+
+// 	resp, err := http.DefaultClient.Do(req)
+// 	assert.Nil(err)
+// 	assert.Equal(http.StatusOK, resp.StatusCode)
+// }
+
+func (suite *HostStyleSuite) TestSubdomainCallingFormatNoSSL() {
+
+	assert := suite
+	signer := v4.NewSigner(Creds)
+	endpoint := viper.GetString("s3main.endpoint")
+	expectBody := []byte("abc123")
+
+	ur := "http://" + bucket + "." + endpoint + "/" + "/" + key
+
+	req, err := http.NewRequest("GET", ur, nil)
+
+	_, err = signer.Sign(req, bytes.NewReader(expectBody), "service", "region", time.Now())
+	assert.Nil(err)
+
+	resp, err := http.DefaultClient.Do(req)
+	assert.Nil(err)
+	assert.Equal(http.StatusOK, resp.StatusCode)
+}
+
+func (suite *HostStyleSuite) TestSubdomainCallingFormatSSL() {
+
+	assert := suite
+	signer := v4.NewSigner(Creds)
+	endpoint := viper.GetString("s3main.endpoint")
+	expectBody := []byte("abc123")
+
+	ur := "http://" + bucket + "." + endpoint + "/" + "/" + key
+
+	//u, _ := url.Parse(ur)
+
+	req, err := http.NewRequest("GET", ur, nil)
+
+	_, err = signer.Sign(req, bytes.NewReader(expectBody), "service", "region", time.Now())
+	assert.Nil(err)
+
+	resp, err := http.DefaultClient.Do(req)
+	assert.Nil(err)
+	assert.Equal(http.StatusOK, resp.StatusCode)
+}
+
+func (suite *HostStyleSuite) TestVHostCallingFormatNoSSL() {
+
+	assert := suite
+	signer := v4.NewSigner(Creds)
+	//endpoint := viper.GetString("s3main.endpoint")
+	expectBody := []byte("abc123")
+
+	ur := "http://" + bucket + "/" + key
+
+	req, err := http.NewRequest("GET", ur, nil)
+
+	_, err = signer.Sign(req, bytes.NewReader(expectBody), "service", "region", time.Now())
+	assert.Nil(err)
+
+	resp, err := http.DefaultClient.Do(req)
+	assert.Nil(err)
+	assert.Equal(http.StatusOK, resp.StatusCode)
+}
+
+func (suite *HostStyleSuite) TestVHostCallingFormatSSL() {
+
+	assert := suite
+	signer := v4.NewSigner(Creds)
+	//endpoint := viper.GetString("s3main.endpoint")
+	expectBody := []byte("abc123")
+
+	ur := "http://" + bucket  + "/" + key
+
+	req, err := http.NewRequest("GET", ur, nil)
+
+	_, err = signer.Sign(req, bytes.NewReader(expectBody), "service", "region", time.Now())
+	assert.Nil(err)
+
+	resp, err := http.DefaultClient.Do(req)
+	assert.Nil(err)
+	assert.Equal(http.StatusOK, resp.StatusCode)
+}
+
+func (suite *HostStyleSuite) TearDownSuite() {
+
+	_ = DeleteBucket(svc, bucket)
+}
