@@ -433,14 +433,14 @@ func SSEKMSkeyIdCustomerWrite(svc *s3.S3, filesize int) (string, string, error) 
 	data :=  strings.Repeat("A", filesize)
 	key := "testobj"
 	bucket := GetBucketName()
-	sse := []string{"AES256"}
-	kmskeyid := viper.GetString("s3main.region")
+	sse := viper.GetString("s3main.SSE")
+	kmskeyid := viper.GetString("s3main.kmskeyid")
 
 	err := CreateBucket(svc, bucket)
 
 	err = WriteSSEKMSkeyId(svc, bucket, key, data, sse, kmskeyid)
 
-	rdata, _ := ReadSSEKMS(svc, bucket, key, sse)
+	rdata, _ := GetObject(svc, bucket, key)
 
 	return rdata, data, err
 }
@@ -450,13 +450,13 @@ func SSEKMSCustomerWrite(svc *s3.S3, filesize int) (string, string, error) {
 	data :=  strings.Repeat("A", filesize)
 	key := "testobj"
 	bucket := GetBucketName()
-	sse := []string{"AES256"}
+	sse := viper.GetString("s3main.SSE")
 
 	err := CreateBucket(svc, bucket)
 
 	err = WriteSSEKMS(svc, bucket, key, data, sse)
 
-	rdata, _ := ReadSSEKMS(svc, bucket, key, sse)
+	rdata, _ := GetObject(svc, bucket, key)
 
 	return rdata, data, err
 }
@@ -508,59 +508,29 @@ func ReadSSECEcrypted(svc *s3.S3, bucket string, key string, sse []string) (stri
 	return resp, errr
 }
 
-func WriteSSEKMS(svc *s3.S3, bucket string, key string, content string, sse []string) error { //deprecated
+func WriteSSEKMS(svc *s3.S3, bucket string, key string, content string, sse string) error { //deprecated
 
 	_, err := svc.PutObject(&s3.PutObjectInput{
 		Body:   strings.NewReader(content),
 		Bucket: &bucket,
 		Key:    &key,
-		SSECustomerKeyMD5: &sse[0],
+		ServerSideEncryption: &sse,
 	})
 
 	return err
 }
 
-func WriteSSEKMSkeyId(svc *s3.S3, bucket string, key string, content string, sse []string, kmskeyid string) error { //deprecated
+func WriteSSEKMSkeyId(svc *s3.S3, bucket string, key string, content string, sse string, kmskeyid string) error { //deprecated
 
 	_, err := svc.PutObject(&s3.PutObjectInput{
 		Body:   strings.NewReader(content),
 		Bucket: &bucket,
 		Key:    &key,
-		SSECustomerKeyMD5: &sse[0],
-		//SSEKMSKeyId: &kmskeyid,
+		ServerSideEncryption: &sse,
+		SSEKMSKeyId: &kmskeyid,
 	})
 
 	return err
-}
-
-func ReadSSEKMS(svc *s3.S3, bucket string, key string, sse []string) (string, error) {
-
-	results, err := svc.GetObject(&s3.GetObjectInput{
-		Bucket: aws.String(bucket), 
-		Key: aws.String(key), 
-		SSECustomerKeyMD5: &sse[0],
-	})
-
-	var resp string
-	var errr error
-
-	if err == nil {
-
-		buf := bytes.NewBuffer(nil)
-		if _, err := io.Copy(buf, results.Body); err != nil {
-			return "", err
-		}
-
-		byteArray := buf.Bytes()
-
-		resp, errr = string(byteArray[:]), err
-
-	} else {
-
-		resp, errr = "", err
-	}
-
-	return resp, errr
 }
 
 func GetSetMetadata (metadata map[string]*string) map[string]*string {
@@ -857,6 +827,41 @@ func CreateBucketWithHeader(svc *s3.S3, bucket string, headers map[string]string
 	return err
 }
 
+func SetLifecycle(svc *s3.S3, bucket , id , status, md5 string) (*s3.PutBucketLifecycleConfigurationOutput, error) {
+
+	input := &s3.PutBucketLifecycleConfigurationInput{
+	    Bucket: aws.String(bucket),
+	    LifecycleConfiguration: &s3.BucketLifecycleConfiguration{
+	        Rules: []*s3.LifecycleRule{
+	            {
+	                ID:     aws.String(id),
+	                Status: aws.String(status),
+	            },
+	        },
+	    },
+	}
+	req, resp := svc.PutBucketLifecycleConfigurationRequest(input)
+	req.HTTPRequest.Header.Set("Content-Md5", string(md5))
+
+	err := req.Send()
+
+	return resp, err
+}
+
+func GetLifecycle(svc *s3.S3, bucket string) (*s3.GetBucketLifecycleConfigurationOutput, error) {
+
+	ctx := context.Background()
+	ctx, _ = context.WithTimeout(ctx, time.Minute)
+
+	input := &s3.GetBucketLifecycleConfigurationInput{
+	    Bucket: aws.String(bucket),
+	}
+
+	result, err := svc.GetBucketLifecycleConfigurationWithContext(ctx, input)
+
+	return result, err
+}
+
 func SetACL (svc *s3.S3, bucket string, acl string)(*s3.PutBucketAclOutput, error){
 
 	req, resp := svc.PutBucketAclRequest(&s3.PutBucketAclInput{
@@ -905,3 +910,4 @@ func SetupSigner(creds *credentials.Credentials) v4.Signer {
 		Credentials: creds,
 	}
 }
+

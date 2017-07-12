@@ -18,8 +18,10 @@ region = "mexico"
 endpoint = "localhost:8000"
 display_name = ""
 email = "someone@gmail.com"
-kms_keyid = "barbican_key_id"
-is_secure = "yes"
+is_secure = false
+SSE = "AES256"
+kmskeyid = "barbican_key_id"
+
 
 [s3alt]
 
@@ -30,5 +32,6 @@ region = "mexico"
 endpoint = "localhost:8000"
 display_name = ""
 email = "someone@gmail.com"
-kms_keyid = "barbican_key_id"
-is_secure = "yes"
+SSE = "your SSE"
+kmskeyid = "barbican_key_id"
+is_secure = false

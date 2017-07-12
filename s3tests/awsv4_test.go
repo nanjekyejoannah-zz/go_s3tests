@@ -1,7 +1,7 @@
 package s3test
 
 import (
-	"github.com/stretchr/testify/suite"
+	//"github.com/stretchr/testify/suite"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/signer/v4"
@@ -19,10 +19,6 @@ import (
 
 	. "../Utilities"
 )
-
-type HeadSuite struct {
-	suite.Suite
-}
 
 func (suite *S3Suite) TestPresignRequest() {
 

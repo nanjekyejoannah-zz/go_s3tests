@@ -3,12 +3,10 @@ package s3test
 import (
 	"github.com/stretchr/testify/suite"
 
-	//"github.com/aws/aws-sdk-go/service/s3"
 	"bytes"
 	"github.com/aws/aws-sdk-go/aws/signer/v4"
 	"github.com/spf13/viper"
 	"net/http"
-	//"net/url"
 
 	"time"
 
@@ -76,25 +74,6 @@ func (suite *HostStyleSuite) TestOrdinaryCallingFormatSSL() {
 	assert.Nil(err)
 	assert.Equal(http.StatusOK, resp.StatusCode)
 }
-
-// func (suite *HostStyleSuite) TestProtocolIndependentOrdinaryCallingFormatSSL() {
-
-// 	assert := suite
-// 	signer := v4.NewSigner(Creds)
-// 	endpoint := viper.GetString("s3main.endpoint")
-// 	expectBody := []byte("abc123")
-
-// 	ur := endpoint + "/" + bucket + "/" + key
-
-// 	req, err := http.NewRequest("GET", ur, nil)
-
-// 	_, err = signer.Sign(req, bytes.NewReader(expectBody), "service", "region", time.Now())
-// 	assert.Nil(err)
-
-// 	resp, err := http.DefaultClient.Do(req)
-// 	assert.Nil(err)
-// 	assert.Equal(http.StatusOK, resp.StatusCode)
-// }
 
 func (suite *HostStyleSuite) TestSubdomainCallingFormatNoSSL() {
 
