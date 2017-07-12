@@ -468,8 +468,8 @@ func WriteSSECEcrypted(svc *s3.S3, bucket string, key string, content string, ss
 		Body:   strings.NewReader(content),
 		Bucket: &bucket,
 		Key:    &key,
-		//SSECustomerAlgorithm: &sse[0],
-		//SSECustomerKey: &sse[1],
+		SSECustomerAlgorithm: &sse[0],
+		SSECustomerKey: &sse[1],
 		SSECustomerKeyMD5: &sse[2],
 	})
 
@@ -481,8 +481,8 @@ func ReadSSECEcrypted(svc *s3.S3, bucket string, key string, sse []string) (stri
 	results, err := svc.GetObject(&s3.GetObjectInput{
 		Bucket: aws.String(bucket), 
 		Key: aws.String(key), 
-		//SSECustomerAlgorithm: &sse[0],
-		//SSECustomerKey: &sse[1],
+		SSECustomerAlgorithm: &sse[0],
+		SSECustomerKey: &sse[1],
 		SSECustomerKeyMD5: &sse[2],
 	})
 
