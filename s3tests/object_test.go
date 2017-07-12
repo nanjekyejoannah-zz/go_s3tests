@@ -17,21 +17,29 @@ import (
 	 . "../Utilities"
 )
 
-func (suite *S3Suite) TestObjectCreateUnreadable() {
+func (suite *S3Suite) TestObjectWriteToNonExistantBucket() {
 
-	/* 
-		Resource : object, method: put
-		Scenario : write to non-printing key 
-		Assertion: passes.
+	/*
+		Reource object : method: get 
+		Operation : read object
+		Assertion : read contents that were never written
 	*/
 
 	assert := suite
-	bucket := GetBucketName()
-	objects := map[string]string{ string('\x0a'): "echo",}
+	non_exixtant_bucket := "bucketz"
+	
+	err := PutObjectToBucket(svc, non_exixtant_bucket, "key", "content")
+	assert.NotNil(err)
 
-	err := CreateBucket(svc, bucket)
-	err = CreateObjects(svc, bucket, objects)
-	assert.Nil(err)
+	if err != nil {
+		if awsErr, ok := err.(awserr.Error); ok {
+
+			assert.Equal(awsErr.Code(), "NoSuchBucket")
+			assert.Equal(awsErr.Message(), "")
+		}
+
+	}
+
 }
 
 func (suite *S3Suite) TestMultiObjectDelete() {
@@ -56,290 +64,6 @@ func (suite *S3Suite) TestMultiObjectDelete() {
 	assert.Nil(err)
 	assert.Equal(0, len(resp.Contents))
 }
-
-func (suite *S3Suite) TestObjectListMany() {
-
-	/* 
-		Resource : object, method: list
-		Scenario : list all keys 
-		Assertion: pagination w/max_keys=2, no marker.
-	*/
-
-	assert := suite
-	bucket := GetBucketName()
-	maxkeys := int64(2)
-	keys := []string{}
-	objects := map[string]string{ "foo": "echo", "bar": "lima", "baz": "golf",}
-	expected_keys := []string{"bar", "baz"}
-
-	err := CreateBucket(svc, bucket)
-	err = CreateObjects(svc, bucket, objects)
-	assert.Nil(err)
-
-	resp, keys, errr := GetKeysWithMaxKeys(svc, bucket, maxkeys)
-	assert.Nil(errr)
-	assert.Equal(len(resp.Contents), 2)
-	assert.Equal(*resp.IsTruncated, true)
-	assert.Equal(keys, expected_keys)
-
-	resp, keys, errs := GetKeysWithMarker(svc, bucket, expected_keys[1])
-	assert.Nil(errs)
-	assert.Equal(len(resp.Contents), 1)
-	assert.Equal(*resp.IsTruncated, false)
-	expected_keys = []string{"foo"}
-
-}
-
-func (suite *S3Suite) TestObjectListMaxkeysNone() {
-
-	/* 
-		Resource : Object, Method: list
-		Operation : List all keys
-		Assertion : pagination w/o max_keys.
-	*/
-
-	assert := suite
-	bucket := GetBucketName()
-	objects := map[string]string{ "key1": "echo", "key2": "lima", "key3": "golf",}
-	ExpectedKeys :=[] string {"key1", "key2", "key3"}
-
-	err := CreateBucket(svc, bucket)
-	err = CreateObjects(svc, bucket, objects)
-	assert.Nil(err)
-
-	resp, err := GetObjects(svc, bucket)
-	assert.Nil(err)
-
-	keys := []string{}
-	for _, key := range resp.Contents {
-		keys = append(keys, *key.Key)
-	}
-	assert.Equal(keys, ExpectedKeys)
-	assert.Equal(*resp.MaxKeys, int64(1000))
-	assert.Equal(*resp.IsTruncated, false)
-}
-
-func (suite *S3Suite) TestObjectListMaxkeysZero() {
-
-	/* 
-		Resource : object, method: get
-		Operation : List all keys .
-		Assertion: pagination w/max_keys=0.
-	*/
-
-	assert := suite
-	bucket := GetBucketName()
-	maxkeys := int64(0)
-	objects := map[string]string{ "key1": "echo", "key2": "lima", "key3": "golf",}
-	ExpectedKeys := []string(nil)
-
-
-	err := CreateBucket(svc, bucket)
-	err = CreateObjects(svc, bucket, objects)
-	assert.Nil(err)
-
-	resp, keys, errr := GetKeysWithMaxKeys(svc, bucket, maxkeys)
-	assert.Nil(errr)
-	assert.Equal(ExpectedKeys, keys)
-	assert.Equal(*resp.IsTruncated, false)
-}
-
-func (suite *S3Suite) TestObjectListMaxkeysOne() {
-
-	/* 
-		Resource : bucket, method: get
-		Operation : List keys all keys. 
-		Assertion: pagination w/max_keys=1, marker.
-	*/
-
-	assert := suite
-	bucket := GetBucketName()
-	maxkeys := int64(1)
-	objects := map[string]string{ "key1": "echo", "key2": "lima", "key3": "golf",}
-	EKeysMaxkey := []string{"key1"}
-	EKeysMarker  := []string{"key2", "key3"}
-
-
-	err := CreateBucket(svc, bucket)
-	err = CreateObjects(svc, bucket, objects)
-	assert.Nil(err)
-
-	resp, keys, errr := GetKeysWithMaxKeys(svc, bucket, maxkeys)
-	assert.Nil(errr)
-	assert.Equal(EKeysMaxkey, keys)
-	assert.Equal(*resp.IsTruncated, true)
-
-	resp, keys, errs := GetKeysWithMarker(svc, bucket, EKeysMaxkey[0])
-	assert.Nil(errs)
-	assert.Equal(*resp.IsTruncated, false)
-	assert.Equal(keys, EKeysMarker)
-	
-}
-
-
-//............................................Test Get object with marker...................................
-
-func (suite *S3Suite) TestObjectListMarkerBeforeList() {
-
-	/* 
-		Resource : object, method: get
-		Scenario : list all objects. 
-		Assertion: marker before list.
-	*/
-
-	assert := suite
-	bucket := GetBucketName()
-	marker := "aaa"
-	objects := map[string]string{ "bar": "echo", "baz": "lima", "quux": "golf",}
-	expected_keys := [] string {"bar", "baz", "quux"}
-
-	err := CreateBucket(svc, bucket)
-	err = CreateObjects(svc, bucket, objects)
-	assert.Nil(err)
-	
-
-	resp, keys, errr := GetKeysWithMarker(svc, bucket, marker)
-	assert.Nil(errr)
-	assert.Equal(*resp.Marker, marker)
-	assert.Equal(keys, expected_keys)
-	assert.Equal(*resp.IsTruncated, false)
-
-	err = DeleteObjects(svc, bucket)
-	err = DeleteBucket(svc, bucket)
-	assert.Nil(err)
-	
-}
-
-func (suite *S3Suite) TestObjectListMarkerAfterList() {
-
-	/* 
-		Resource : object, method: get
-		Scenario : list all objects. 
-		Assertion: marker after list.
-	*/
-
-	assert := suite
-	bucket := GetBucketName()
-	marker := "zzz"
-	objects := map[string]string{ "bar": "echo", "baz": "lima", "quux": "golf",}
-	expected_keys := []string(nil)
-
-	err := CreateBucket(svc, bucket)
-	err = CreateObjects(svc, bucket, objects)
-	assert.Nil(err)
-	
-
-	resp, keys, errr := GetKeysWithMarker(svc, bucket, marker)
-	assert.Nil(errr)
-	assert.Equal(*resp.Marker, marker)
-	assert.Equal(*resp.IsTruncated, false)
-	assert.Equal(keys, expected_keys)
-	
-}
-
-func (suite *S3Suite) TestObjectListMarkerNotInList() {
-
-	/* 
-		Resource : object, method: get
-		Scenario : list all objects. 
-		Assertion: marker not in list.
-	*/
-
-	assert := suite
-	bucket := GetBucketName()
-	marker := "blah"
-	objects := map[string]string{ "bar": "echo", "baz": "lima", "quux": "golf",}
-	expected_keys := []string{"quux"}
-
-	err := CreateBucket(svc, bucket)
-	err = CreateObjects(svc, bucket, objects)
-	assert.Nil(err)
-	
-
-	resp, keys, errr := GetKeysWithMarker(svc, bucket, marker)
-	assert.Nil(errr)
-	assert.Equal(*resp.Marker, marker)
-	assert.Equal(keys, expected_keys)
-}
-
-func (suite *S3Suite) TestObjectListMarkerUnreadable() {
-
-	/* 
-		Resource : object, method: get
-		Scenario : list all objects. 
-		Assertion: non-printing marker.
-	*/
-
-	assert := suite
-	bucket := GetBucketName()
-	marker := "\x0a"
-	objects := map[string]string{ "bar": "echo", "baz": "lima", "quux": "golf",}
-	expected_keys := []string{"bar", "baz", "quux"}
-
-	err := CreateBucket(svc, bucket)
-	err = CreateObjects(svc, bucket, objects)
-	assert.Nil(err)
-	
-
-	resp, keys, errr := GetKeysWithMarker(svc, bucket, marker)
-	assert.Nil(errr)
-	assert.Equal(*resp.Marker, marker)
-	assert.Equal(*resp.IsTruncated, false)
-	assert.Equal(keys, expected_keys)
-	
-}
-
-func (suite *S3Suite) TestObjectListMarkerEmpty() {
-
-	/* 
-		Resource : object, method: get
-		Scenario : list all objects. 
-		Assertion: no pagination, empty marker.
-	*/
-
-	assert := suite
-	bucket := GetBucketName()
-	marker := ""
-	objects := map[string]string{ "bar": "echo", "baz": "lima", "quux": "golf",}
-	expected_keys := []string{"bar", "baz", "quux"}
-
-	err := CreateBucket(svc, bucket)
-	err = CreateObjects(svc, bucket, objects)
-	assert.Nil(err)
-	
-
-	resp, keys, errr := GetKeysWithMarker(svc, bucket, marker)
-	assert.Nil(errr)
-	assert.Equal(*resp.Marker, marker)
-	assert.Equal(*resp.IsTruncated, false)
-	assert.Equal(keys, expected_keys)
-	
-}
-
-func (suite *S3Suite) TestObjectListMarkerNone() {
-
-	/* 
-		Resource : object, method: get
-		Scenario : list all objects. 
-		Assertion: no pagination, no marker.
-	*/
-
-	assert := suite
-	bucket := GetBucketName()
-	marker := ""
-	objects := map[string]string{ "bar": "echo", "baz": "lima", "quux": "golf",}
-
-	err := CreateBucket(svc, bucket)
-	err = CreateObjects(svc, bucket, objects)
-	assert.Nil(err)
-	
-
-	resp, _, errr := GetKeysWithMarker(svc, bucket, marker)
-	assert.Nil(errr)
-	assert.Equal(*resp.Marker, marker)
-	
-}
-
 
 func (suite *S3Suite) TestObjectReadNotExist() {
 
@@ -632,21 +356,6 @@ func (suite *S3Suite) TestRangedRequestEmptyObject() {
 
 		}
 	}
-}
-
-func (suite *S3Suite) TestObjectHeadZeroBytes() {
-
-	assert := suite
-	bucket := GetBucketName()
-	objects := map[string]string{ "bar": "",}
-
-	err := CreateBucket(svc, bucket)
-	err = CreateObjects(svc, bucket, objects)
-	assert.Nil(err)
-
-	resp, err := GetObject(svc, bucket, "bar")
-	assert.Nil(err)
-	assert.Equal(0, len(resp))
 }
 
 func (suite *S3Suite) TestObjectSetGetMetadataNoneToGood() {

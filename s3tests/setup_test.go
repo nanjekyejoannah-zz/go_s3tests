@@ -19,8 +19,8 @@ func (suite *S3Suite) SetupTest() {
 
 func TestSuite(t *testing.T) {
 
-	suite.Run(t, new(S3Suite))
 	suite.Run(t, new(HeadSuite))
+	suite.Run(t, new(S3Suite))
 }
 
 func (suite *S3Suite) TearDownTest() {
