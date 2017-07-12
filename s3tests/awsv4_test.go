@@ -115,7 +115,7 @@ func (suite *S3Suite) TestSignWithRequestBody() {
 	assert.Equal(http.StatusOK, resp.StatusCode)
 }
 
-func (suite *S3Suite) TestSignWithRequestBody_Overwrite() {
+func (suite *S3Suite) TestSignWithRequestBodyOverwrite() {
 
 	assert := suite
 	signer := v4.NewSigner(Creds)
@@ -142,7 +142,7 @@ func (suite *S3Suite) TestSignWithRequestBody_Overwrite() {
 	assert.Equal(http.StatusOK, resp.StatusCode)
 }
 
-func (suite *S3Suite) TestSignWithBody_ReplaceRequestBody() {
+func (suite *S3Suite) TestSignWithBodyReplaceRequestBody() {
 
 	assert := suite
 	region := viper.GetString("s3main.region")
@@ -159,7 +159,7 @@ func (suite *S3Suite) TestSignWithBody_ReplaceRequestBody() {
 	assert.NotNil(req.Body)
 }
 
-func (suite *S3Suite) TestSignWithBody_NoReplaceRequestBody() {
+func (suite *S3Suite) TestSignWithBodyNoReplaceRequestBody() {
 
 	assert := suite
 	region := viper.GetString("s3main.region")
@@ -211,7 +211,7 @@ func (suite *S3Suite) TestPresignHandler() {
 	assert.NotContains(urlstr, "+") // + encoded as %20
 }
 
-func (suite *S3Suite) TestStandaloneSign_CustomURIEscape() {
+func (suite *S3Suite) TestStandaloneSignCustomURIEscape() {
 
 	assert := suite
 	var expectSig = "AWS4-HMAC-SHA256 Credential=0555b35654ad1656d804/19700101/us-east-1/es/aws4_request, SignedHeaders=host;x-amz-date, Signature=c79ab70ccf1424132da60f559db2cd3e1502b0d002ba2a72940facd380742b1d"

@@ -1,0 +1,37 @@
+
+[DEFAULT]
+
+host = "s3.amazonaws.com"
+port = "8080"
+is_secure = "yes"
+
+[fixtures]
+
+bucket_prefix = "joannah"
+
+[s3main]
+
+access_key = "0555b35654ad1656d804"
+access_secret = "h7GhxuBLTrlhVUyxSPUKUV8r/2EI4ngqJxD7iBdBYLhwluN30JaT3Q=="
+bucket = "bucket1"
+region = "mexico"
+endpoint = "localhost:8000"
+display_name = ""
+email = "someone@gmail.com"
+is_secure = false
+SSE = "AES256"
+kmskeyid = "barbican_key_id"
+
+
+[s3alt]
+
+access_key = "0555b35654ad1656d804"
+access_secret = "h7GhxuBLTrlhVUyxSPUKUV8r/2EI4ngqJxD7iBdBYLhwluN30JaT3Q=="
+bucket = "bucket1"
+region = "mexico"
+endpoint = "localhost:8000"
+display_name = ""
+email = "someone@gmail.com"
+SSE = "your SSE"
+kmskeyid = "barbican_key_id"
+is_secure = false

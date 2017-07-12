@@ -9,7 +9,7 @@ The tests only cover the REST interface.
 
 ### Setup
 
-The tests use the [GO amazon SDK](). The tests use the testing built in Go Package and an assertion toolkit testify.To get started, ensure you have the Golang Environment installed software installed; e.g. on Debian/Ubuntu::
+The tests use the [GO amazon SDK](). The tests use the testing built in Go Package and an assertion toolkit testify.To get started, ensure you have the [Golang Environment setup]((https://golang.org/doc/install); e.g. on Debian/Ubuntu::
 
 Ubuntu
 
@@ -29,8 +29,11 @@ Clone the repository
 	git clone https://github.com/nanjekyejoannah/go_s3tests
 	cd go_s3tests
 
-You will need to create a configuration file with the location of the service and credentials. You can edit the config.toml.sample file available in the project. Make sure to save it as config.toml. You can also decide to make the config file a yaml or json. Just give it config.yaml or config.json for yaml and json respectively. The tests connect to the Ceph RGW ,therefore you shoud have started your RGW and use the credentials you get. The config file looks like this:
+You will need to create a configuration file with the location of the service and credentials. Edit the config.toml.sample file available in the project. Make sure you save it as config.toml. You can also decide to make the config file a yaml or json. Just give it config.yaml or config.json for yaml and json respectively. 
 
+The config file looks like this:
+
+	
 	[DEFAULT]
 
 	host = "s3.amazonaws.com"
@@ -39,7 +42,7 @@ You will need to create a configuration file with the location of the service an
 
 	[fixtures]
 
-	bucket_prefix = "jnans"
+	bucket_prefix = "joannah"
 
 	[s3main]
 
@@ -47,9 +50,13 @@ You will need to create a configuration file with the location of the service an
 	access_secret = "h7GhxuBLTrlhVUyxSPUKUV8r/2EI4ngqJxD7iBdBYLhwluN30JaT3Q=="
 	bucket = "bucket1"
 	region = "mexico"
-	endpoint = "http://localhost:8000/"
+	endpoint = "localhost:8000" #depending on how you are connecting to RGW
 	display_name = ""
 	email = "someone@gmail.com"
+	is_secure = false  #true to enable SSL
+	SSE = "AES256"
+	kmskeyid = "barbican_key_id"
+
 
 	[s3alt]
 
@@ -57,21 +64,32 @@ You will need to create a configuration file with the location of the service an
 	access_secret = "h7GhxuBLTrlhVUyxSPUKUV8r/2EI4ngqJxD7iBdBYLhwluN30JaT3Q=="
 	bucket = "bucket1"
 	region = "mexico"
-	endpoint = "http://localhost:8000/"
+	endpoint = "localhost:8000"
 	display_name = ""
 	email = "someone@gmail.com"
+	SSE = ""AES256""
+	kmskeyid = "barbican_key_id"
+	is_secure = false  #true to enable SSL
 
-You need to set your GoPath .Details on setting up Ho environments can be found [here](https://golang.org/doc/install)
+### RGW
+
+The tests connect to the Ceph RGW ,therefore you shoud have started your RGW and use the credentials you get. Details on building Ceph and starting RGW can be found in the [ceph repository](https://github.com/ceph/ceph).
+
+### Gopath and Dependencies
+
+You need to set your GoPath . Details on setting up Go environments can be found [here](https://golang.org/doc/install)
 	
 	export GOPATH=$HOME/go
 
-### Installing dependencies
+#### Installing dependencies
 
-	go get -u github.com/aws/aws-sdk-go
-	go get github.com/spf13/viper
-	go get github.com/stretchr/testify/require
+	 go get ./...
 
-### To run the tests
+#### To run the tests
 	
 	cd s3tests
-	go test -v     			 	# to run all tests
+	go test -v  
+
+#### To Do
+
++ Expand tests to special cases on versioning, bucket life cycles and multipart uploads.   			 	
