@@ -83,7 +83,9 @@ You need to set your GoPath . Details on setting up Go environments can be found
 
 #### Installing dependencies
 
-	 go get ./...
+You should be in the project root folder to run this.
+
+	 go get -d ./...
 
 #### To run the tests
 	
