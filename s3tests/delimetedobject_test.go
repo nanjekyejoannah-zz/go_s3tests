@@ -24,7 +24,6 @@ func (suite *HeadSuite) TestObjectListPrefixDelimiterPrefixDelimiterNotExist() {
 		Assertion: finds nothing w/unmatched prefix and delimiter.
 	*/
 
-	svc := GetConn()
 
 	assert := suite
 	bucket := GetBucketName()

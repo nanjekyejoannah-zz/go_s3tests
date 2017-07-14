@@ -815,6 +815,18 @@ func SetupObjectWithHeader(svc *s3.S3, bucket string, key string, content string
 	return err
 }
 
+func SetupBucketWithHeader(svc *s3.S3, bucket string, headers map[string]string) (error) {
+
+	ctx := context.Background()
+	ctx, _ = context.WithTimeout(ctx, time.Minute)
+
+	_, err = svc.CreateBucketWithContext(ctx, &s3.CreateBucketInput{
+		Bucket: aws.String(bucket),
+	}, AddHeaders(headers))
+
+	return err
+}
+
 func CreateBucketWithHeader(svc *s3.S3, bucket string, headers map[string]string) error {
 
 	ctx := context.Background()
@@ -910,4 +922,3 @@ func SetupSigner(creds *credentials.Credentials) v4.Signer {
 		Credentials: creds,
 	}
 }
-
