@@ -32,7 +32,7 @@ Clone the repository
 
 Copy the sample configuration.
 
-cp config.toml.sample config.toml
+	cp config.toml.sample config.toml
 
 Edit the config.toml.sample file to your needs. You can also decide to make the config file a yaml or json. Just give it config.yaml or config.json for yaml and json respectively. 
 
