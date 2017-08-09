@@ -28,10 +28,15 @@ Clone the repository
 
 	git clone https://github.com/nanjekyejoannah/go_s3tests
 	cd go_s3tests
+### Configuration
 
-You will need to create a configuration file with the location of the service and credentials. Edit the config.toml.sample file available in the project. Make sure you save it as config.toml. You can also decide to make the config file a yaml or json. Just give it config.yaml or config.json for yaml and json respectively. 
+Copy the sample configuration.
 
-The config file looks like this:
+cp config.toml.sample config.toml
+
+Edit the config.toml.sample file to your needs. You can also decide to make the config file a yaml or json. Just give it config.yaml or config.json for yaml and json respectively. 
+
+The config file should look  like this:
 
 	
 	[DEFAULT]
@@ -94,4 +99,7 @@ You should be in the project root folder to run this.
 
 #### To Do
 
-+ Expand tests to special cases on versioning, bucket life cycles and multipart uploads.   			 	
++ Host Style 
++ More scenarios on Multipart Uploads referencing known bugs.
++ Versioning
++ Some Refactor as well. Tech debt :)   			 	
