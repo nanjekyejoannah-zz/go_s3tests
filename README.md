@@ -1,7 +1,8 @@
 
-#Test Go SDK on RGW
+# Test Go SDK on RGW
 
 Clone the Repository
+
 	git clone https://github.com/nanjekyejoannah/go_s3tests
 
 Checkout RGWTEST branch
@@ -10,7 +11,7 @@ Checkout RGWTEST branch
 
 Change to project directory
 
-cd go_s3tests
+	cd go_s3tests
 
 Run vstart
 
@@ -32,7 +33,7 @@ Set Go path
 
 Install dependencies
 
-go get -d ./...
+	go get -d ./...
 
 To list Buckets that you created using s3cmd on RGW or some other way.
 
