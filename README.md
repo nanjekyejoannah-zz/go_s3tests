@@ -5,9 +5,9 @@ Clone the Repository
 
 	git clone https://github.com/nanjekyejoannah/go_s3tests
 
-Checkout RGWTEST branch
+Checkout list-buckets-rgw-test branch
 
-	git checkout RGWTEST
+	git checkout list-buckets-rgw-test
 
 Change to project directory
 
@@ -25,7 +25,14 @@ Ubuntu
 
 Fedora 
 
-	sudo apt-get install golang 
+	sudo dnf install golang 
+
+Install boto3 and botocore
+
+Ubuntu & Fedora
+
+	pip install boto3
+	pip install botocore
 
 Set Go path
 
@@ -35,17 +42,10 @@ Install dependencies
 
 	go get -d ./...
 
-To list Buckets that you created using s3cmd on RGW or some other way.
+To create a Bucket that you can list using s3cmd or list-buckets-rgw.py in the RGW
 
+        cd create
 	go run main.go
-
-To create Buckets
-
-	cd create
-	go run main.go
-
-
-
-
-
+        python list-buckets-rgw.py
+        (output should be: Bucket List: ['bkt1'])
 
