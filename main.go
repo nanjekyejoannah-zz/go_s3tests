@@ -28,10 +28,10 @@ func LoadConfig() error {
 
 var err = LoadConfig()
 
-var Creds = credentials.NewStaticCredentials(viper.GetString("s3main.access_key"), viper.GetString("s3main.access_secret"), "")
+var Creds = credentials.NewStaticCredentials("0555b35654ad1656d804", "h7GhxuBLTrlhVUyxSPUKUV8r/2EI4ngqJxD7iBdBYLhwluN30JaT3Q==", "")
 
-var cfg = aws.NewConfig().WithRegion(viper.GetString("s3main.region")).
-	WithEndpoint(viper.GetString("s3main.endpoint")).
+var cfg = aws.NewConfig().WithRegion("us-east-1").
+	WithEndpoint("http://localhost:8000/").
 	WithDisableSSL(true).
 	WithLogLevel(3).
 	WithS3ForcePathStyle(true).
@@ -39,11 +39,6 @@ var cfg = aws.NewConfig().WithRegion(viper.GetString("s3main.region")).
 
 var sess = session.Must(session.NewSession())
 var svc = s3.New(sess, cfg)
-
-func GetConn() *s3.S3 {
-
-	return svc
-}
 
 func main() {
 
