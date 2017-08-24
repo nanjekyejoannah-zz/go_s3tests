@@ -17,6 +17,10 @@ func (suite *S3Suite) SetupTest() {
 
 }
 
+type HeadSuite struct {
+	suite.Suite
+}
+
 func TestSuite(t *testing.T) {
 
 	suite.Run(t, new(HeadSuite))
@@ -24,6 +28,11 @@ func TestSuite(t *testing.T) {
 }
 
 func (suite *S3Suite) TearDownTest() {
+
+	DeletePrefixedBuckets(svc)
+}
+
+func (suite *HeadSuite) TearDownTest() {
 
 	DeletePrefixedBuckets(svc)
 }

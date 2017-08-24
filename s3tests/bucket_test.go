@@ -434,13 +434,12 @@ func (suite *S3Suite) TestLifecycleInvalidMD5() {
 	bucket := GetBucketName()
 	err := CreateBucket(svc, bucket)
 
-
 	content := strings.NewReader("Enabled")
 	h := md5.New()
 	content.WriteTo(h)
 	sum := h.Sum(nil)
 	b := make([]byte, base64.StdEncoding.EncodedLen(len(sum)))
-	base64.StdEncoding.Encode(b,sum)
+	base64.StdEncoding.Encode(b, sum)
 
 	md5 := string(b)
 
@@ -468,13 +467,12 @@ func (suite *S3Suite) TestLifecycleInvalidStatus() {
 	bucket := GetBucketName()
 	err := CreateBucket(svc, bucket)
 
-
 	content := strings.NewReader("Enabled")
 	h := md5.New()
 	content.WriteTo(h)
 	sum := h.Sum(nil)
 	b := make([]byte, base64.StdEncoding.EncodedLen(len(sum)))
-	base64.StdEncoding.Encode(b,sum)
+	base64.StdEncoding.Encode(b, sum)
 
 	md5 := string(b)
 
@@ -508,4 +506,3 @@ func (suite *S3Suite) TestLifecycleInvalidStatus() {
 		}
 	}
 }
-
