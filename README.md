@@ -17,9 +17,7 @@ Ubuntu
 
 Fedora
 
-	dnf install golang-gopkg-yaml-devel-v2 \
-	golang-github-aws-aws-sdk-go-devel \
-	golang-github-stretchr-testify-devel
+	dnf install golang-gopkg-yaml-devel-v2
 
 
 ### Running the Tests
@@ -28,6 +26,7 @@ Clone the repository
 
 	git clone https://github.com/nanjekyejoannah/go_s3tests
 	cd go_s3tests
+
 ### Configuration
 
 Copy the sample configuration.
@@ -100,6 +99,4 @@ You should be in the project root folder to run this.
 #### To Do
 
 + Host Style 
-+ More scenarios on Multipart Uploads referencing known bugs.
-+ Versioning
-+ Some Refactor as well. Tech debt :)   			 	
++ Versioning 			 	
